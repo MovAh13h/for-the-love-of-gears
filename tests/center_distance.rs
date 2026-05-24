@@ -2,12 +2,18 @@ use for_the_love_of_gears::center_distance::CenterDistance;
 
 #[test]
 fn from_reference_diameters() {
-    assert_eq!(CenterDistance::from_reference_diameters(40.0, 60.0).value(), 50.0);
+    assert_eq!(
+        CenterDistance::from_reference_diameters(40.0, 60.0).value(),
+        50.0
+    );
 }
 
 #[test]
 fn from_module_and_teeth() {
-    assert_eq!(CenterDistance::from_module_and_teeth(2.0, 20, 30).value(), 50.0);
+    assert_eq!(
+        CenterDistance::from_module_and_teeth(2.0, 20, 30).value(),
+        50.0
+    );
 }
 
 #[test]
@@ -21,5 +27,8 @@ fn both_methods_agree() {
 #[test]
 fn equal_gears_center_distance_equals_reference_diameter() {
     let (m, z) = (2.0, 20);
-    assert_eq!(CenterDistance::from_module_and_teeth(m, z, z).value(), m * z as f64);
+    assert_eq!(
+        CenterDistance::from_module_and_teeth(m, z, z).value(),
+        m * z as f64
+    );
 }

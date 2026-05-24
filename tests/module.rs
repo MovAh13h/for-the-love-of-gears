@@ -15,7 +15,14 @@ fn from_circular_pitch() {
 #[test]
 fn from_pitch_circle_diameter() {
     // d=40, z=20 → m=2
-    assert_eq!(Module::FromPitchCircleDiameter { pitch_circle_diameter: 40.0, teeth: 20 }.value(), 2.0);
+    assert_eq!(
+        Module::FromPitchCircleDiameter {
+            pitch_circle_diameter: 40.0,
+            teeth: 20
+        }
+        .value(),
+        2.0
+    );
 }
 
 #[test]

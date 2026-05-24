@@ -1,20 +1,20 @@
-/// The four concentric circles that define a gear's cross-section:
-///
-/// ```text
-///  ┌──────────────────────────┐  tip circle    da = m(z + 2)
-///  │  ┌────────────────────┐  │  pitch circle  d  = mz
-///  │  │  ┌──────────────┐  │  │  root circle   df = m(z − 2.5)
-///  │  │  │  ┌────────┐  │  │  │  base circle   db = d · cos(α)
-///  │  │  │  │        │  │  │  │
-///  │  │  │  └────────┘  │  │  │
-///  │  │  └──────────────┘  │  │
-///  │  └────────────────────┘  │
-///  └──────────────────────────┘
-/// ```
-///
-/// The **pitch circle** is the reference — all other diameters are derived from
-/// it. The **base circle** is unique: it is the origin of the involute tooth
-/// profile and depends on the pressure angle.
+//! The four concentric circles that define a gear's cross-section:
+//!
+//! ```text
+//!  ┌──────────────────────────┐  tip circle    da = m(z + 2)
+//!  │  ┌────────────────────┐  │  pitch circle  d  = mz
+//!  │  │  ┌──────────────┐  │  │  root circle   df = m(z − 2.5)
+//!  │  │  │  ┌────────┐  │  │  │  base circle   db = d · cos(α)
+//!  │  │  │  │        │  │  │  │
+//!  │  │  │  └────────┘  │  │  │
+//!  │  │  └──────────────┘  │  │
+//!  │  └────────────────────┘  │
+//!  └──────────────────────────┘
+//! ```
+//!
+//! The **pitch circle** is the reference — all other diameters are derived from
+//! it. The **base circle** is unique: it is the origin of the involute tooth
+//! profile and depends on the pressure angle.
 
 /// Diameter of the pitch circle — the central reference of all gear geometry: `d = mz`.
 ///

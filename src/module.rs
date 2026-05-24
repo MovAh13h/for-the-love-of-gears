@@ -66,7 +66,10 @@ pub enum Module {
     /// let m = Module::FromPitchCircleDiameter { pitch_circle_diameter: 40.0, teeth: 20 };
     /// assert_eq!(m.value(), 2.0); // 40 / 20 = 2
     /// ```
-    FromPitchCircleDiameter { pitch_circle_diameter: f64, teeth: u32 },
+    FromPitchCircleDiameter {
+        pitch_circle_diameter: f64,
+        teeth: u32,
+    },
 }
 
 impl Module {
@@ -75,9 +78,10 @@ impl Module {
         match self {
             Self::Specified(m) => m,
             Self::FromCircularPitch(p) => p / PI,
-            Self::FromPitchCircleDiameter { pitch_circle_diameter, teeth } => {
-                pitch_circle_diameter / teeth as f64
-            }
+            Self::FromPitchCircleDiameter {
+                pitch_circle_diameter,
+                teeth,
+            } => pitch_circle_diameter / teeth as f64,
         }
     }
 }
