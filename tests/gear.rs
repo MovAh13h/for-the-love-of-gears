@@ -237,24 +237,6 @@ fn center_distance_to() {
 }
 
 #[test]
-fn center_distance_is_symmetric() {
-    let g1 = Gear::builder()
-        .module(Module::Specified(2.0))
-        .teeth(20)
-        .build()
-        .unwrap();
-    let g2 = Gear::builder()
-        .module(Module::Specified(2.0))
-        .teeth(40)
-        .build()
-        .unwrap();
-    assert_eq!(
-        g1.center_distance_to(&g2).value(),
-        g2.center_distance_to(&g1).value()
-    );
-}
-
-#[test]
 fn gear_ratio_reduction() {
     let driver = Gear::builder()
         .module(Module::Specified(2.0))
@@ -282,10 +264,4 @@ fn gear_ratio_increase() {
         .build()
         .unwrap();
     assert_eq!(driver.gear_ratio_to(&driven), 0.5);
-}
-
-#[test]
-fn gear_ratio_equal_gears_is_one() {
-    let g = gear_m2_z20();
-    assert_eq!(g.gear_ratio_to(&g), 1.0);
 }

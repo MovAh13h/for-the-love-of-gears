@@ -12,3 +12,6 @@ documentation = "https://docs.rs/for_the_love_of_gears"
 readme = "README.md"
 
 [dependencies]
+
+[dev-dependencies]
+proptest = "1"

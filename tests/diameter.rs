@@ -16,20 +16,6 @@ fn root_diameter_m2_z20() {
 }
 
 #[test]
-fn tip_diameter_equals_reference_plus_two_addenda() {
-    let (m, z) = (3.0, 15);
-    let d = ReferenceDiameter::new(m, z).value();
-    assert!((TipDiameter::new(m, z).value() - (d + 2.0 * m)).abs() < 1e-10);
-}
-
-#[test]
-fn root_diameter_equals_reference_minus_two_dedenda() {
-    let (m, z) = (3.0, 15);
-    let d = ReferenceDiameter::new(m, z).value();
-    assert!((RootDiameter::new(m, z).value() - (d - 2.0 * 1.25 * m)).abs() < 1e-10);
-}
-
-#[test]
 fn base_diameter_20deg_m2_z20() {
     let db = BaseDiameter::new(2.0, 20, 20.0).value();
     let expected = 40.0 * 20.0_f64.to_radians().cos();
