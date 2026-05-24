@@ -2,6 +2,7 @@ use std::f64::consts::PI;
 
 use crate::{
     center_distance::CenterDistance,
+    contact_ratio::{OverlapRatio, TotalContactRatio, TransverseContactRatio},
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
     gear::GearError,
     module::Module,
@@ -356,6 +357,78 @@ impl HelicalGear {
             self.reference_diameter().value(),
             other.reference_diameter().value(),
         )
+    }
+
+    /// Transverse contact ratio between this gear and `other`: `εα`.
+    ///
+    /// Computed in the transverse plane using the transverse pressure angle and
+    /// transverse base pitch. For the total contact ratio (including the axial
+    /// overlap contribution), use [`HelicalGear::total_contact_ratio_with`].
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+    ///
+    /// let g1 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// let g2 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+    /// assert!(g1.transverse_contact_ratio_with(&g2).value() > 1.0);
+    /// ```
+    pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> TransverseContactRatio {
+        let ra1 = self.tip_diameter().value() / 2.0;
+        let rb1 = self.base_diameter().value() / 2.0;
+        let ra2 = other.tip_diameter().value() / 2.0;
+        let rb2 = other.base_diameter().value() / 2.0;
+        let a = self.center_distance_to(other).value();
+        let alpha_t = self.transverse_pressure_angle();
+        let pb_t = PI * self.transverse_module() * alpha_t.to_radians().cos();
+        TransverseContactRatio::from_geometry(ra1, rb1, ra2, rb2, a, alpha_t, pb_t)
+    }
+
+    /// Overlap ratio from the helical tooth sweep: `εβ = b·sin(ψ) / (π·mn)`.
+    ///
+    /// Returns `None` if no face width was set on this gear — face width is
+    /// required to compute the axial overlap.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+    ///
+    /// let g = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .face_width(30.0)
+    ///     .build().unwrap();
+    /// assert!(g.overlap_ratio().is_some());
+    ///
+    /// let g_no_fw = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// assert!(g_no_fw.overlap_ratio().is_none());
+    /// ```
+    pub fn overlap_ratio(&self) -> Option<OverlapRatio> {
+        self.face_width
+            .map(|b| OverlapRatio::new(b, self.helix_angle, self.module.value()))
+    }
+
+    /// Total contact ratio: `εγ = εα + εβ`.
+    ///
+    /// Returns `None` if no face width was set on this gear, since the overlap
+    /// ratio `εβ` cannot be computed without it.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+    ///
+    /// let g1 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).face_width(30.0).build().unwrap();
+    /// let g2 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).face_width(30.0).build().unwrap();
+    ///
+    /// let eg = g1.total_contact_ratio_with(&g2).unwrap();
+    /// let ea = g1.transverse_contact_ratio_with(&g2);
+    /// let eb = g1.overlap_ratio().unwrap();
+    /// assert!((eg.value() - (ea.value() + eb.value())).abs() < 1e-10);
+    /// ```
+    pub fn total_contact_ratio_with(&self, other: &HelicalGear) -> Option<TotalContactRatio> {
+        self.overlap_ratio()
+            .map(|eb| TotalContactRatio::new(self.transverse_contact_ratio_with(other), eb))
     }
 
     /// Speed ratio from this gear to `other`: `i = z_other / z_self`.

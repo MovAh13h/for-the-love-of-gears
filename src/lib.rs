@@ -40,6 +40,7 @@
 //! returns teeth per inch and is clearly marked as such.
 
 pub mod center_distance;
+pub mod contact_ratio;
 pub mod diameter;
 pub mod gear;
 pub mod helical;

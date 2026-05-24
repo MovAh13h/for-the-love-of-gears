@@ -1,5 +1,6 @@
 use for_the_love_of_gears::{
     center_distance::CenterDistance,
+    contact_ratio::OverlapRatio,
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
     gear::Gear,
     helical::{HelicalGear, HelixHand},
@@ -348,5 +349,82 @@ proptest! {
         let g2 = helical_gear(m, z2, psi, HelixHand::Left);
         let product = g1.gear_ratio_to(&g2) * g2.gear_ratio_to(&g1);
         prop_assert!((product - 1.0).abs() < 1e-10);
+    }
+
+    // --- Contact ratio ---
+
+    #[test]
+    fn prop_spur_contact_ratio_symmetric(
+        m  in 0.1f64..=50.0f64,
+        z1 in 1u32..=200u32,
+        z2 in 1u32..=200u32,
+    ) {
+        let g1 = Gear::builder().module(Module::Specified(m)).teeth(z1).build().unwrap();
+        let g2 = Gear::builder().module(Module::Specified(m)).teeth(z2).build().unwrap();
+        prop_assert_eq!(
+            g1.contact_ratio_with(&g2).value(),
+            g2.contact_ratio_with(&g1).value()
+        );
+    }
+
+    #[test]
+    fn prop_spur_contact_ratio_positive(
+        m  in 0.1f64..=50.0f64,
+        z1 in 1u32..=200u32,
+        z2 in 1u32..=200u32,
+    ) {
+        let g1 = Gear::builder().module(Module::Specified(m)).teeth(z1).build().unwrap();
+        let g2 = Gear::builder().module(Module::Specified(m)).teeth(z2).build().unwrap();
+        prop_assert!(g1.contact_ratio_with(&g2).value() > 0.0);
+    }
+
+    #[test]
+    fn prop_overlap_ratio_formula(
+        b   in 1.0f64..=200.0f64,
+        psi in 0.1f64..89.9f64,
+        m   in 0.1f64..=50.0f64,
+    ) {
+        let eb = OverlapRatio::new(b, psi, m);
+        let expected = b * psi.to_radians().sin() / (PI * m);
+        prop_assert!((eb.value() - expected).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_total_contact_ratio_equals_transverse_plus_overlap(
+        m   in 0.1f64..=50.0f64,
+        z1  in 1u32..=200u32,
+        z2  in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+        b   in 1.0f64..=200.0f64,
+    ) {
+        let g1 = HelicalGear::builder()
+            .module(Module::Specified(m)).teeth(z1)
+            .helix_angle(psi).helix_hand(HelixHand::Right)
+            .face_width(b)
+            .build().unwrap();
+        let g2 = HelicalGear::builder()
+            .module(Module::Specified(m)).teeth(z2)
+            .helix_angle(psi).helix_hand(HelixHand::Left)
+            .face_width(b)
+            .build().unwrap();
+        let ea = g1.transverse_contact_ratio_with(&g2).value();
+        let eb = g1.overlap_ratio().unwrap().value();
+        let eg = g1.total_contact_ratio_with(&g2).unwrap().value();
+        prop_assert!((eg - (ea + eb)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_helical_transverse_contact_ratio_symmetric(
+        m   in 0.1f64..=50.0f64,
+        z1  in 1u32..=200u32,
+        z2  in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g1 = helical_gear(m, z1, psi, HelixHand::Right);
+        let g2 = helical_gear(m, z2, psi, HelixHand::Left);
+        prop_assert_eq!(
+            g1.transverse_contact_ratio_with(&g2).value(),
+            g2.transverse_contact_ratio_with(&g1).value()
+        );
     }
 }

@@ -10,7 +10,7 @@
 [![Docs.rs](https://docs.rs/for_the_love_of_gears/badge.svg)](https://docs.rs/for_the_love_of_gears)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/MovAh13h/for-the-love-of-gears/blob/master/LICENSE)
 
-ISO-standard spur gear geometry in Rust. Define a gear from its module and tooth count, then read off every dimension — diameters, tooth profile, pitch, and gear pair properties — as typed values in millimetres.
+ISO-standard spur and helical gear geometry in Rust. Define a gear from its module and tooth count, then read off every dimension — diameters, tooth profile, pitch, and gear pair properties — as typed values in millimetres.
 
 ---
 
@@ -56,15 +56,30 @@ assert_eq!(pinion.gear_ratio_to(&wheel), 2.0);               // 40 / 20
 
 ---
 
+## Modules
+
+| Module | What it gives you |
+|---|---|
+| `gear` | `Gear` — spur gear builder + all derived geometry |
+| `helical` | `HelicalGear` — helical gear builder, transverse/normal values, axial pitch, lead |
+| `diameter` | `ReferenceDiameter`, `TipDiameter`, `RootDiameter`, `BaseDiameter` |
+| `tooth` | `Addendum`, `Dedendum`, `ToothDepth`, `ToothThickness`, `Clearance` |
+| `pitch` | `CircularPitch`, `DiametralPitch` |
+| `contact_ratio` | `TransverseContactRatio`, `OverlapRatio`, `TotalContactRatio` |
+| `center_distance` | `CenterDistance` |
+| `module` | `Module` — specify tooth size by value, circular pitch, or pitch circle diameter |
+
+---
+
 ## Roadmap
 
 Ideas for future additions — contributions welcome:
 
-- [ ] Helical gear support — helix angle, normal and transverse module
+- [x] Helical gear support — helix angle, normal and transverse module
+- [x] Contact ratio — transverse, overlap (helical), and total contact ratio
 - [ ] Profile shift — non-standard addendum/dedendum for strength optimisation
 - [ ] Rack geometry — the limiting case of infinite radius
 - [ ] Bevel and worm gear families
-- [ ] Contact ratio calculation
 
 ---
 

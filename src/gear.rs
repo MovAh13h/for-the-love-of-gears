@@ -1,7 +1,8 @@
-use std::fmt;
+use std::{f64::consts::PI, fmt};
 
 use crate::{
     center_distance::CenterDistance,
+    contact_ratio::TransverseContactRatio,
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
     module::Module,
     pitch::{CircularPitch, DiametralPitch},
@@ -303,6 +304,36 @@ impl Gear {
             self.reference_diameter().value(),
             other.reference_diameter().value(),
         )
+    }
+
+    /// Transverse contact ratio between this gear and `other`: `εα`.
+    ///
+    /// Contact ratio is the average number of tooth pairs sharing load at any
+    /// instant. A value of `1.0` means exactly one pair is always in contact; a
+    /// value of `1.6` means that for part of each cycle two pairs share the load.
+    /// Spur gears typically target `εα ≥ 1.2`; values of `1.4–1.8` are common
+    /// in general machinery.
+    ///
+    /// Both gears must share the same pressure angle for the result to be
+    /// meaningful — use [`Gear::can_mesh_with`] to verify meshability first.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{gear::Gear, module::Module};
+    ///
+    /// let g1 = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
+    /// let g2 = Gear::builder().module(Module::Specified(2.0)).teeth(40).build().unwrap();
+    /// let cr = g1.contact_ratio_with(&g2);
+    /// assert!((cr.value() - 1.635).abs() < 0.001);
+    /// ```
+    pub fn contact_ratio_with(&self, other: &Gear) -> TransverseContactRatio {
+        let ra1 = self.tip_diameter().value() / 2.0;
+        let rb1 = self.base_diameter().value() / 2.0;
+        let ra2 = other.tip_diameter().value() / 2.0;
+        let rb2 = other.base_diameter().value() / 2.0;
+        let a = self.center_distance_to(other).value();
+        let alpha = self.pressure_angle;
+        let pb = PI * self.module.value() * alpha.to_radians().cos();
+        TransverseContactRatio::from_geometry(ra1, rb1, ra2, rb2, a, alpha, pb)
     }
 
     /// Speed ratio from this gear to `other`: `i = z_other / z_self`.
