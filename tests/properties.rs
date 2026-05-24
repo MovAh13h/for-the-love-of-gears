@@ -2,9 +2,10 @@ use for_the_love_of_gears::{
     center_distance::CenterDistance,
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
     gear::Gear,
+    helical::{HelicalGear, HelixHand},
     module::Module,
     pitch::{CircularPitch, DiametralPitch},
-    tooth::{Addendum, Clearance, Dedendum, ToothDepth},
+    tooth::{Addendum, Clearance, Dedendum, ToothDepth, ToothThickness},
 };
 use proptest::prelude::*;
 use std::f64::consts::PI;
@@ -25,6 +26,16 @@ fn pressure_angle_deg() -> impl Strategy<Value = f64> {
     0.1f64..89.9f64
 }
 
+fn helical_gear(m: f64, z: u32, psi: f64, hand: HelixHand) -> HelicalGear {
+    HelicalGear::builder()
+        .module(Module::Specified(m))
+        .teeth(z)
+        .helix_angle(psi)
+        .helix_hand(hand)
+        .build()
+        .unwrap()
+}
+
 proptest! {
     // --- Tooth identities ---
 
@@ -42,6 +53,13 @@ proptest! {
         let ha = Addendum::from_module(m).value();
         let hf = Dedendum::from_module(m).value();
         prop_assert!((c - (hf - ha)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_tooth_thickness_is_half_circular_pitch(m in pos_module()) {
+        let s = ToothThickness::from_module(m).value();
+        let p = CircularPitch::from_module(m).value();
+        prop_assert!((s - p / 2.0).abs() < 1e-10);
     }
 
     // --- Pitch product ---
@@ -178,5 +196,157 @@ proptest! {
     fn prop_gear_ratio_self_is_one(m in 0.1f64..=50.0f64, z in 1u32..=200u32) {
         let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
         prop_assert_eq!(g.gear_ratio_to(&g), 1.0);
+    }
+
+    // --- Helical gear invariants ---
+
+    #[test]
+    fn prop_helical_transverse_module_formula(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let expected = m / psi.to_radians().cos();
+        prop_assert!((g.transverse_module() - expected).abs() < 1e-10);
+        prop_assert!(g.transverse_module() > m);
+    }
+
+    #[test]
+    fn prop_helical_transverse_pressure_angle_greater_than_normal(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        prop_assert!(g.transverse_pressure_angle() > g.normal_pressure_angle());
+    }
+
+    #[test]
+    fn prop_helical_tooth_profile_uses_normal_module(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        prop_assert!((g.addendum().value()    - m).abs()        < 1e-10);
+        prop_assert!((g.dedendum().value()    - 1.25 * m).abs() < 1e-10);
+        prop_assert!((g.tooth_depth().value() - 2.25 * m).abs() < 1e-10);
+        prop_assert!((g.clearance().value()   - 0.25 * m).abs() < 1e-10);
+        prop_assert!((g.tooth_thickness().value() - PI * m / 2.0).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_helical_diameter_ordering(
+        m   in 0.1f64..=50.0f64,
+        z   in 3u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let d  = g.reference_diameter().value();
+        let da = g.tip_diameter().value();
+        let df = g.root_diameter().value();
+        prop_assert!(df < d,  "root {} mm should be < pitch {} mm", df, d);
+        prop_assert!(d  < da, "pitch {} mm should be < tip {} mm", d, da);
+    }
+
+    #[test]
+    fn prop_helical_base_diameter_formula(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let expected = g.reference_diameter().value()
+            * g.transverse_pressure_angle().to_radians().cos();
+        prop_assert!((g.base_diameter().value() - expected).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_helical_tip_diameter_equals_reference_plus_two_addenda(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let d  = g.reference_diameter().value();
+        let da = g.tip_diameter().value();
+        let ha = g.addendum().value();
+        prop_assert!((da - (d + 2.0 * ha)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_helical_root_diameter_equals_reference_minus_two_dedenda(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let d  = g.reference_diameter().value();
+        let df = g.root_diameter().value();
+        let hf = g.dedendum().value();
+        prop_assert!((df - (d - 2.0 * hf)).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_helical_transverse_circular_pitch_formula(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let expected = PI * g.transverse_module();
+        prop_assert!((g.transverse_circular_pitch().value() - expected).abs() < 1e-10);
+        prop_assert!(g.transverse_circular_pitch().value() > g.normal_circular_pitch().value());
+    }
+
+    #[test]
+    fn prop_helical_axial_pitch_formula(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let expected = PI * m / psi.to_radians().sin();
+        prop_assert!((g.axial_pitch().value() - expected).abs() < 1e-6);
+    }
+
+    #[test]
+    fn prop_helical_lead_equals_axial_pitch_times_teeth(
+        m   in 0.1f64..=50.0f64,
+        z   in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g = helical_gear(m, z, psi, HelixHand::Right);
+        let expected = g.axial_pitch().value() * z as f64;
+        prop_assert!((g.lead().value() - expected).abs() < 1e-6);
+    }
+
+    #[test]
+    fn prop_helical_center_distance_symmetric(
+        m   in 0.1f64..=50.0f64,
+        z1  in 1u32..=200u32,
+        z2  in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g1 = helical_gear(m, z1, psi, HelixHand::Right);
+        let g2 = helical_gear(m, z2, psi, HelixHand::Left);
+        prop_assert_eq!(
+            g1.center_distance_to(&g2).value(),
+            g2.center_distance_to(&g1).value()
+        );
+    }
+
+    #[test]
+    fn prop_helical_gear_ratio_reciprocal(
+        m   in 0.1f64..=50.0f64,
+        z1  in 1u32..=200u32,
+        z2  in 1u32..=200u32,
+        psi in 0.1f64..89.9f64,
+    ) {
+        let g1 = helical_gear(m, z1, psi, HelixHand::Right);
+        let g2 = helical_gear(m, z2, psi, HelixHand::Left);
+        let product = g1.gear_ratio_to(&g2) * g2.gear_ratio_to(&g1);
+        prop_assert!((product - 1.0).abs() < 1e-10);
     }
 }
