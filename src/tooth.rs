@@ -1,7 +1,9 @@
 use std::f64::consts::PI;
 
+pub(crate) const DEDENDUM_COEFF: f64 = 1.25;
+
 // Tooth geometry — all dimensions relative to the pitch circle.
-// Ratios 1.00, 1.25, and 0.25 are ISO standard tooth proportions.
+// Addendum = 1.00m, dedendum = DEDENDUM_COEFF × m.
 //
 //  ──────┬───┬──────  tip circle    da = m(z + 2)
 //        │   │                      ↑ addendum ha = 1.00m
@@ -44,7 +46,7 @@ pub struct Dedendum(f64);
 impl Dedendum {
     /// Compute dedendum from module: `hf = 1.25 × m`.
     pub fn from_module(m: f64) -> Self {
-        Self(1.25 * m)
+        Self(DEDENDUM_COEFF * m)
     }
 
     /// Returns the dedendum in millimetres.
@@ -66,7 +68,7 @@ pub struct ToothDepth(f64);
 impl ToothDepth {
     /// Compute tooth depth from module: `h = 2.25 × m`.
     pub fn from_module(m: f64) -> Self {
-        Self(2.25 * m)
+        Self((1.0 + DEDENDUM_COEFF) * m)
     }
 
     /// Returns the tooth depth in millimetres.
@@ -114,7 +116,7 @@ pub struct Clearance(f64);
 impl Clearance {
     /// Compute clearance from module: `c = 0.25 × m`.
     pub fn from_module(m: f64) -> Self {
-        Self(0.25 * m)
+        Self((DEDENDUM_COEFF - 1.0) * m)
     }
 
     /// Returns the clearance in millimetres.

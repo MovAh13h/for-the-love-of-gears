@@ -1,5 +1,7 @@
 use std::f64::consts::PI;
 
+const MM_PER_INCH: f64 = 25.4;
+
 /// The arc length between two adjacent teeth, measured along the pitch circle.
 ///
 /// Circular pitch `p` is the metric way to express tooth spacing. It is directly
@@ -80,7 +82,7 @@ impl DiametralPitch {
     /// assert!((dp.value() - 25.4).abs() < 1e-10);
     /// ```
     pub fn from_module(m: f64) -> Self {
-        Self(25.4 / m)
+        Self(MM_PER_INCH / m)
     }
 
     /// Returns the diametral pitch in teeth per inch.

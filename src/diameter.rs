@@ -107,7 +107,7 @@ impl RootDiameter {
     /// assert_eq!(df.value(), 35.0); // 2 × (20 − 2.5)
     /// ```
     pub fn new(module: f64, teeth: u32) -> Self {
-        Self(module * (teeth as f64 - 2.5))
+        Self(module * (teeth as f64 - 2.0 * crate::tooth::DEDENDUM_COEFF))
     }
 
     /// Returns the root diameter in millimetres.
