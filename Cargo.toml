@@ -1,6 +1,6 @@
 [package]
 name = "for_the_love_of_gears"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 description = "ISO-standard gear geometry — module, pitch, tooth profile, diameters, and centre distance."
 license = "MIT"

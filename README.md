@@ -1,4 +1,9 @@
-# for-the-love-of-gears
+# For the love of Gears!
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/MovAh13h/for-the-love-of-gears/master/assets/banner-dark.svg">
+  <img alt="for-the-love-of-gears" src="https://raw.githubusercontent.com/MovAh13h/for-the-love-of-gears/master/assets/banner-light.svg" width="1280">
+</picture>
 
 [![Crates.io](https://img.shields.io/crates/v/for_the_love_of_gears.svg)](https://crates.io/crates/for_the_love_of_gears)
 [![Docs.rs](https://docs.rs/for_the_love_of_gears/badge.svg)](https://docs.rs/for_the_love_of_gears)
@@ -14,7 +19,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-for_the_love_of_gears = "0.1.0"
+for_the_love_of_gears = "*"
 ```
 
 ---
