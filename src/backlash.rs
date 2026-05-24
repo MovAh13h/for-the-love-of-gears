@@ -97,7 +97,7 @@ impl Backlash {
     /// assert!((jt.per_gear_thinning() - 0.04).abs() < 1e-10);
     /// ```
     pub fn per_gear_thinning(self) -> f64 {
-        self.0 / 2.0
+        self.value() / 2.0
     }
 }
 

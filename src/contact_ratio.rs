@@ -68,6 +68,32 @@
 
 use std::f64::consts::PI;
 
+/// Shared helper used by both [`crate::gear::Gear`] and [`crate::helical::HelicalGear`].
+///
+/// Computes the transverse contact ratio given tip/base radii for both gears,
+/// the centre distance, the relevant pressure angle, and the relevant module
+/// (transverse for helical, normal for spur). The base pitch is derived internally.
+pub(crate) fn transverse_contact_ratio(
+    tip_radius_1: f64,
+    base_radius_1: f64,
+    tip_radius_2: f64,
+    base_radius_2: f64,
+    center_distance: f64,
+    pressure_angle_deg: f64,
+    module: f64,
+) -> TransverseContactRatio {
+    let base_pitch = PI * module * pressure_angle_deg.to_radians().cos();
+    TransverseContactRatio::from_geometry(
+        tip_radius_1,
+        base_radius_1,
+        tip_radius_2,
+        base_radius_2,
+        center_distance,
+        pressure_angle_deg,
+        base_pitch,
+    )
+}
+
 /// Average number of tooth pairs in contact in the transverse plane: `εα`.
 ///
 /// Use [`crate::gear::Gear::contact_ratio_with`] for spur gear pairs, or

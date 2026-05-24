@@ -1,3 +1,53 @@
+//! Helical gears — teeth cut at an angle to the rotation axis.
+//!
+//! A helical gear is like a spur gear whose teeth are twisted along the shaft
+//! axis by the **helix angle** `ψ`. This twist means several teeth share the
+//! load at once, producing smoother and quieter operation than spur gears at
+//! the cost of an axial thrust force.
+//!
+//! # Key parameters
+//!
+//! | Parameter | Symbol | Unit | Note |
+//! |---|---|---|---|
+//! | Normal module | `mn` | mm | Tooth size in the normal plane; determines tooling |
+//! | Number of teeth | `z` | — | Integer count |
+//! | Normal pressure angle | `αn` | degrees | 20° standard |
+//! | Helix angle | `ψ` | degrees | Typically 15–30° |
+//! | Hand | — | — | Right-hand (RH) or left-hand (LH) |
+//!
+//! Mating helical gears must have the same normal module, same normal pressure
+//! angle, equal helix angles, and **opposite hands** (one RH, one LH).
+//!
+//! # Normal plane vs transverse plane
+//!
+//! Helical gears have two sets of measurements:
+//! - **Normal plane** (`n`): perpendicular to the tooth flank helix. This is
+//!   the plane of the cutting tool and where `mn` and `αn` are defined.
+//! - **Transverse plane** (`t`): perpendicular to the shaft axis. This is
+//!   where `mt`, `αt`, and the pitch diameter live.
+//!
+//! ```text
+//! mt = mn / cos(ψ)
+//! tan(αt) = tan(αn) / cos(ψ)
+//! ```
+//!
+//! # Quick start
+//!
+//! ```
+//! use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+//!
+//! let gear = HelicalGear::builder()
+//!     .module(Module::Specified(2.0))
+//!     .teeth(20)
+//!     .helix_angle(20.0)
+//!     .helix_hand(HelixHand::Right)
+//!     .build()
+//!     .unwrap();
+//!
+//! let mt = gear.transverse_module();
+//! assert!((mt - 2.0 / 20.0_f64.to_radians().cos()).abs() < 1e-10);
+//! ```
+
 use std::f64::consts::PI;
 
 use crate::{
@@ -381,8 +431,9 @@ impl HelicalGear {
     /// assert!(g1.can_mesh_with(&g2));
     /// ```
     pub fn can_mesh_with(&self, other: &HelicalGear) -> bool {
-        let same_module = (self.module.value() - other.module.value()).abs() < 1e-9;
-        let same_angle = (self.helix_angle - other.helix_angle).abs() < 1e-9;
+        let same_module =
+            (self.module.value() - other.module.value()).abs() < crate::MESH_TOLERANCE;
+        let same_angle = (self.helix_angle - other.helix_angle).abs() < crate::MESH_TOLERANCE;
         let opposite_hand = other.helix_hand == self.helix_hand.opposite();
         same_module && same_angle && opposite_hand
     }
@@ -473,14 +524,15 @@ impl HelicalGear {
     /// assert!(g1.transverse_contact_ratio_with(&g2).value() > 1.0);
     /// ```
     pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> TransverseContactRatio {
-        let ra1 = self.tip_diameter().value() / 2.0;
-        let rb1 = self.base_diameter().value() / 2.0;
-        let ra2 = other.tip_diameter().value() / 2.0;
-        let rb2 = other.base_diameter().value() / 2.0;
-        let a = self.center_distance_to(other).value();
-        let alpha_t = self.transverse_pressure_angle();
-        let pb_t = PI * self.transverse_module() * alpha_t.to_radians().cos();
-        TransverseContactRatio::from_geometry(ra1, rb1, ra2, rb2, a, alpha_t, pb_t)
+        crate::contact_ratio::transverse_contact_ratio(
+            self.tip_diameter().value() / 2.0,
+            self.base_diameter().value() / 2.0,
+            other.tip_diameter().value() / 2.0,
+            other.base_diameter().value() / 2.0,
+            self.center_distance_to(other).value(),
+            self.transverse_pressure_angle(),
+            self.transverse_module(),
+        )
     }
 
     /// Overlap ratio from the helical tooth sweep: `εβ = b·sin(ψ) / (π·mn)`.

@@ -1,3 +1,8 @@
+//! Module — the fundamental unit of gear tooth size.
+//!
+//! Module `m` sets the scale of every gear dimension. Two gears can mesh
+//! only if they share the same module. See [`Module`] for the full API.
+
 use std::f64::consts::PI;
 
 /// The fundamental unit of gear tooth size, as defined by ISO standards.
@@ -67,7 +72,9 @@ pub enum Module {
     /// assert_eq!(m.value(), 2.0); // 40 / 20 = 2
     /// ```
     FromPitchCircleDiameter {
+        /// Measured pitch circle diameter in millimetres.
         pitch_circle_diameter: f64,
+        /// Number of teeth counted on the gear.
         teeth: u32,
     },
 }

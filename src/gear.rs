@@ -46,7 +46,7 @@
 //! assert_eq!(driver.center_distance_to(&driven).value(), 60.0); // (40 + 80) / 2
 //! ```
 
-use std::{f64::consts::PI, fmt};
+use std::fmt;
 
 use crate::{
     backlash::{Backlash, NormalBacklash},
@@ -362,7 +362,7 @@ impl Gear {
     /// assert!(!g1.can_mesh_with(&g3));
     /// ```
     pub fn can_mesh_with(&self, other: &Gear) -> bool {
-        (self.module.value() - other.module.value()).abs() < 1e-9
+        (self.module.value() - other.module.value()).abs() < crate::MESH_TOLERANCE
     }
 
     /// Centre distance between the two gear axes in mm: `a = (d1 + d2) / 2`.
@@ -447,14 +447,15 @@ impl Gear {
     /// assert!((cr.value() - 1.635).abs() < 0.001);
     /// ```
     pub fn contact_ratio_with(&self, other: &Gear) -> TransverseContactRatio {
-        let ra1 = self.tip_diameter().value() / 2.0;
-        let rb1 = self.base_diameter().value() / 2.0;
-        let ra2 = other.tip_diameter().value() / 2.0;
-        let rb2 = other.base_diameter().value() / 2.0;
-        let a = self.center_distance_to(other).value();
-        let alpha = self.pressure_angle;
-        let pb = PI * self.module.value() * alpha.to_radians().cos();
-        TransverseContactRatio::from_geometry(ra1, rb1, ra2, rb2, a, alpha, pb)
+        crate::contact_ratio::transverse_contact_ratio(
+            self.tip_diameter().value() / 2.0,
+            self.base_diameter().value() / 2.0,
+            other.tip_diameter().value() / 2.0,
+            other.base_diameter().value() / 2.0,
+            self.center_distance_to(other).value(),
+            self.pressure_angle,
+            self.module.value(),
+        )
     }
 
     /// Speed ratio from this gear to `other`: `i = z_other / z_self`.

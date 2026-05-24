@@ -49,6 +49,8 @@
 //! `thinned_tooth_thickness` and `normal_backlash` methods that apply a
 //! specified backlash to the theoretical tooth geometry.
 
+pub(crate) const MESH_TOLERANCE: f64 = 1e-9;
+
 pub mod backlash;
 pub mod center_distance;
 pub mod contact_ratio;

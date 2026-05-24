@@ -150,6 +150,7 @@ pub enum Direction {
 }
 
 impl Direction {
+    #[must_use]
     fn flip(self) -> Self {
         match self {
             Self::Clockwise => Self::CounterClockwise,
@@ -172,9 +173,19 @@ pub enum GearSceneError {
     /// A gear referenced in a `.mesh()` call does not exist.
     GearNotFound(String),
     /// Both gears in a `.mesh()` call are on the same shaft — a gear cannot mesh with itself.
-    MeshGearsOnSameShaft { gear_a: String, gear_b: String },
+    MeshGearsOnSameShaft {
+        /// Name of the first gear in the mesh.
+        gear_a: String,
+        /// Name of the second gear in the mesh.
+        gear_b: String,
+    },
     /// The two gears in a mesh are incompatible (different module or gear type).
-    IncompatibleMesh { gear_a: String, gear_b: String },
+    IncompatibleMesh {
+        /// Name of the first gear in the mesh.
+        gear_a: String,
+        /// Name of the second gear in the mesh.
+        gear_b: String,
+    },
     /// A shaft has no mesh connections leading back to the driver — it would never move.
     DisconnectedShaft(String),
     /// A shaft is reachable via two different mesh paths that imply different RPM values.
@@ -373,11 +384,11 @@ impl GearSceneBuilder {
             return Err(GearSceneError::DriverShaftNotFound(driver_shaft));
         }
 
-        // --- Validate meshes and build adjacency list ---
-        // adj[shaft] = Vec<(other_shaft, ratio)>  where ratio = rpm_other / rpm_self
-        let mut adj: HashMap<String, Vec<(String, f64)>> = HashMap::new();
+        // --- Validate meshes and build shaft_edgesacency list ---
+        // shaft_edges[shaft] = Vec<(other_shaft, ratio)>  where ratio = rpm_other / rpm_self
+        let mut shaft_edges: HashMap<String, Vec<(String, f64)>> = HashMap::new();
         for shaft_name in shafts.keys() {
-            adj.entry(shaft_name.clone()).or_default();
+            shaft_edges.entry(shaft_name.clone()).or_default();
         }
 
         for (gear_a, gear_b) in &self.meshes {
@@ -421,11 +432,13 @@ impl GearSceneBuilder {
             let tb = g_b.teeth() as f64;
 
             // rpm_b = rpm_a * (ta / tb)
-            adj.entry(shaft_a.clone())
+            shaft_edges
+                .entry(shaft_a.clone())
                 .or_default()
                 .push((shaft_b.clone(), ta / tb));
             // rpm_a = rpm_b * (tb / ta)
-            adj.entry(shaft_b.clone())
+            shaft_edges
+                .entry(shaft_b.clone())
                 .or_default()
                 .push((shaft_a.clone(), tb / ta));
         }
@@ -445,12 +458,12 @@ impl GearSceneBuilder {
             let current_rpm = relative_rpms[&current];
             let current_dir = directions[&current];
 
-            for (neighbor, ratio) in &adj[&current] {
+            for (neighbor, ratio) in &shaft_edges[&current] {
                 let neighbor_rpm = current_rpm * ratio;
                 let neighbor_dir = current_dir.flip();
 
                 if let Some(&existing) = relative_rpms.get(neighbor) {
-                    if (existing - neighbor_rpm).abs() > 1e-9 {
+                    if (existing - neighbor_rpm).abs() > crate::MESH_TOLERANCE {
                         return Err(GearSceneError::OverConstrainedShaft(neighbor.clone()));
                     }
                 } else {
