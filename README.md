@@ -90,44 +90,6 @@ assert!(eg.value() > ea.value()); // helical overlap adds smoothness
 
 ---
 
-## Modules
-
-| Module | What it gives you |
-|---|---|
-| `gear` | `Gear` — spur gear builder + all derived geometry |
-| `helical` | `HelicalGear` — helical gear builder, transverse/normal values, axial pitch, lead |
-| `diameter` | `ReferenceDiameter`, `TipDiameter`, `RootDiameter`, `BaseDiameter` |
-| `tooth` | `Addendum`, `Dedendum`, `ToothDepth`, `ToothThickness`, `Clearance` |
-| `pitch` | `CircularPitch`, `DiametralPitch` |
-| `contact_ratio` | `TransverseContactRatio`, `OverlapRatio`, `TotalContactRatio` |
-| `center_distance` | `CenterDistance` |
-| `module` | `Module` — specify tooth size by value, circular pitch, or pitch circle diameter |
-
----
-
-## Roadmap
-
-Ideas for future additions — contributions welcome:
-
-- [x] Helical gear support — helix angle, normal and transverse module
-- [x] Contact ratio — transverse, overlap (helical), and total contact ratio
-- [ ] Profile shift — non-standard addendum/dedendum for strength optimisation
-- [ ] Rack geometry — the limiting case of infinite radius
-- [ ] Bevel and worm gear families
-
----
-
-## Contributing
-
-Contributions are welcome. A few guidelines:
-
-- **New formulas must cite a source.** ISO standards, KHK, Shigley's, or equivalent. Engineering formulas without a reference will not be merged.
-- **Every public type needs tests.** Add them to the matching file in `tests/`.
-- **All values are in millimetres.** Do not introduce other units without explicit conversion types.
-- Open an issue first for large changes so the direction can be agreed before you write code.
-
----
-
 ## License
 
 [MIT](https://github.com/MovAh13h/for-the-love-of-gears/blob/master/LICENSE) — Tanishq Jain
