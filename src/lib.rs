@@ -42,6 +42,7 @@
 pub mod center_distance;
 pub mod diameter;
 pub mod gear;
+pub mod helical;
 pub mod module;
 pub mod pitch;
 pub mod tooth;

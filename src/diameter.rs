@@ -76,6 +76,22 @@ impl TipDiameter {
         Self(module * (teeth as f64 + 2.0))
     }
 
+    /// Compute tip diameter for a helical gear: `da = mt·z + 2·mn`.
+    ///
+    /// Tooth height is governed by the normal module `mn`; the pitch circle by
+    /// the transverse module `mt`. The two are related by `mt = mn / cos(ψ)`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::diameter::TipDiameter;
+    /// let mn = 2.0_f64;
+    /// let mt = mn / 20.0_f64.to_radians().cos(); // ψ = 20°
+    /// let da = TipDiameter::from_helical(mt, mn, 20);
+    /// assert!((da.value() - (mt * 20.0 + 2.0 * mn)).abs() < 1e-10);
+    /// ```
+    pub fn from_helical(transverse_module: f64, normal_module: f64, teeth: u32) -> Self {
+        Self(transverse_module * teeth as f64 + 2.0 * normal_module)
+    }
+
     /// Returns the tip diameter in millimetres.
     pub fn value(self) -> f64 {
         self.0
@@ -108,6 +124,19 @@ impl RootDiameter {
     /// ```
     pub fn new(module: f64, teeth: u32) -> Self {
         Self(module * (teeth as f64 - 2.0 * crate::tooth::DEDENDUM_COEFF))
+    }
+
+    /// Compute root diameter for a helical gear: `df = mt·z − 2.5·mn`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::diameter::RootDiameter;
+    /// let mn = 2.0_f64;
+    /// let mt = mn / 20.0_f64.to_radians().cos(); // ψ = 20°
+    /// let df = RootDiameter::from_helical(mt, mn, 20);
+    /// assert!((df.value() - (mt * 20.0 - 2.5 * mn)).abs() < 1e-10);
+    /// ```
+    pub fn from_helical(transverse_module: f64, normal_module: f64, teeth: u32) -> Self {
+        Self(transverse_module * teeth as f64 - 2.0 * crate::tooth::DEDENDUM_COEFF * normal_module)
     }
 
     /// Returns the root diameter in millimetres.

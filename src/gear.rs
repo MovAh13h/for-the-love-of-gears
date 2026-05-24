@@ -26,6 +26,16 @@ pub enum GearError {
     PressureAngleMustBePositive,
     /// Face width must be greater than zero millimetres.
     FaceWidthMustBePositive,
+    /// No helix angle was given to the builder.
+    HelixAngleRequired,
+    /// No helix hand was given to the builder.
+    HelixHandRequired,
+    /// Helix angle must be greater than zero degrees.
+    ///
+    /// A helix angle of `0°` describes a spur gear — use [`Gear`] for that case.
+    HelixAngleMustBePositive,
+    /// Helix angle must be less than 90 degrees.
+    HelixAngleMustBeLessThan90,
 }
 
 impl fmt::Display for GearError {
@@ -40,6 +50,14 @@ impl fmt::Display for GearError {
             }
             Self::FaceWidthMustBePositive => {
                 write!(f, "face width must be greater than zero mm")
+            }
+            Self::HelixAngleRequired => write!(f, "helix angle is required"),
+            Self::HelixHandRequired => write!(f, "helix hand is required"),
+            Self::HelixAngleMustBePositive => {
+                write!(f, "helix angle must be greater than zero degrees")
+            }
+            Self::HelixAngleMustBeLessThan90 => {
+                write!(f, "helix angle must be less than 90 degrees")
             }
         }
     }
