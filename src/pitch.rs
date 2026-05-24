@@ -1,3 +1,19 @@
+//! Tooth spacing — circular pitch and diametral pitch.
+//!
+//! Two different ways to express how far apart adjacent teeth are:
+//!
+//! - **Circular pitch** (`p`, mm) — arc length between adjacent teeth along the pitch
+//!   circle. `p = π × m`. This is the natural companion to module in metric systems.
+//!
+//! - **Diametral pitch** (`DP`, teeth/in) — number of teeth per inch of pitch diameter.
+//!   `DP = 25.4 / m`. Used in North American and some aerospace standards.
+//!
+//! The two are reciprocal: `p × DP = π × 25.4 ≈ 79.8`.
+//!
+//! For metric design work you rarely need these types directly —
+//! [`crate::module::Module`] encodes tooth size completely. They are useful when
+//! interfacing with inch-unit tooling or comparing datasheets from mixed-unit systems.
+
 use std::f64::consts::PI;
 
 const MM_PER_INCH: f64 = 25.4;

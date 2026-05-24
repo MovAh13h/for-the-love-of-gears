@@ -1,3 +1,51 @@
+//! Spur gears — the fundamental gear type with teeth parallel to the rotation axis.
+//!
+//! A spur gear is a cylinder with teeth cut parallel to its axis. It is the simplest
+//! and most common gear type, used wherever the input and output shafts are parallel.
+//! The three defining parameters are:
+//!
+//! | Parameter | Symbol | Unit | Default |
+//! |---|---|---|---|
+//! | Module | `m` | mm | required |
+//! | Number of teeth | `z` | — | required |
+//! | Pressure angle | `α` | degrees | 20° (ISO) |
+//!
+//! Two gears can only mesh if they share the same module — that is what guarantees
+//! the teeth fit together. Size (number of teeth) and the gear ratio are independent.
+//!
+//! # Quick start
+//!
+//! ```
+//! use for_the_love_of_gears::{gear::Gear, module::Module};
+//!
+//! // A module-2 spur gear with 20 teeth
+//! let gear = Gear::builder()
+//!     .module(Module::Specified(2.0))
+//!     .teeth(20)
+//!     .build()
+//!     .unwrap();
+//!
+//! assert_eq!(gear.reference_diameter().value(), 40.0); // d = mz = 2 × 20
+//! assert_eq!(gear.addendum().value(), 2.0);             // ha = m = 2
+//! assert_eq!(gear.dedendum().value(), 2.5);             // hf = 1.25m = 2.5
+//! ```
+//!
+//! # Gear pairs
+//!
+//! Any two spur gears with the same module will mesh. The gear ratio equals the
+//! ratio of tooth counts:
+//!
+//! ```
+//! use for_the_love_of_gears::{gear::Gear, module::Module};
+//!
+//! let driver = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
+//! let driven = Gear::builder().module(Module::Specified(2.0)).teeth(40).build().unwrap();
+//!
+//! assert!(driver.can_mesh_with(&driven));
+//! assert_eq!(driver.gear_ratio_to(&driven), 2.0);        // 40 / 20
+//! assert_eq!(driver.center_distance_to(&driven).value(), 60.0); // (40 + 80) / 2
+//! ```
+
 use std::{f64::consts::PI, fmt};
 
 use crate::{

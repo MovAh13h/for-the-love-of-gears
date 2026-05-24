@@ -7,6 +7,7 @@ use for_the_love_of_gears::{
     helical::{HelicalGear, HelixHand},
     module::Module,
     pitch::{CircularPitch, DiametralPitch},
+    scene::{AnyGear, GearScene},
     tooth::{Addendum, Clearance, Dedendum, ToothDepth, ToothThickness},
 };
 use proptest::prelude::*;
@@ -427,6 +428,90 @@ proptest! {
             g1.transverse_contact_ratio_with(&g2).value(),
             g2.transverse_contact_ratio_with(&g1).value()
         );
+    }
+
+    // --- Spur tooth coefficients ---
+
+    #[test]
+    fn prop_spur_addendum_equals_module(m in pos_module(), z in any_teeth()) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        prop_assert!((g.addendum().value() - m).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_spur_dedendum_equals_1_25_module(m in pos_module(), z in any_teeth()) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        prop_assert!((g.dedendum().value() - 1.25 * m).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_spur_tooth_depth_equals_2_25_module(m in pos_module(), z in any_teeth()) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        prop_assert!((g.tooth_depth().value() - 2.25 * m).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_spur_clearance_equals_0_25_module(m in pos_module(), z in any_teeth()) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        prop_assert!((g.clearance().value() - 0.25 * m).abs() < 1e-10);
+    }
+
+    // --- Pitch formulas ---
+
+    #[test]
+    fn prop_circular_pitch_value(m in pos_module()) {
+        let p = CircularPitch::from_module(m);
+        prop_assert!((p.value() - PI * m).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_diametral_pitch_value(m in pos_module()) {
+        let dp = DiametralPitch::from_module(m);
+        prop_assert!((dp.value() - 25.4 / m).abs() < 1e-10);
+    }
+
+    // --- Scene: ratio propagation ---
+
+    #[test]
+    fn prop_scene_two_gear_ratio(
+        m  in 0.1f64..=50.0f64,
+        z1 in 1u32..=200u32,
+        z2 in 1u32..=200u32,
+    ) {
+        let ga = AnyGear::from(Gear::builder().module(Module::Specified(m)).teeth(z1).build().unwrap());
+        let gb = AnyGear::from(Gear::builder().module(Module::Specified(m)).teeth(z2).build().unwrap());
+        let scene = GearScene::builder()
+            .shaft("driver", vec![("a", ga)])
+            .shaft("driven", vec![("b", gb)])
+            .mesh("a", "b")
+            .driver("driver")
+            .build()
+            .unwrap();
+        let sim = scene.run(100.0, 1.0).unwrap();
+        let expected = z2 as f64 / z1 as f64;
+        prop_assert!((sim.ratio_to("driven") - expected).abs() < 1e-9);
+    }
+
+    #[test]
+    fn prop_scene_rpm_scales_linearly(
+        m   in 0.1f64..=50.0f64,
+        z1  in 1u32..=200u32,
+        z2  in 1u32..=200u32,
+        rpm in 1.0f64..=10000.0f64,
+    ) {
+        let ga = AnyGear::from(Gear::builder().module(Module::Specified(m)).teeth(z1).build().unwrap());
+        let gb = AnyGear::from(Gear::builder().module(Module::Specified(m)).teeth(z2).build().unwrap());
+        let scene = GearScene::builder()
+            .shaft("driver", vec![("a", ga)])
+            .shaft("driven", vec![("b", gb)])
+            .mesh("a", "b")
+            .driver("driver")
+            .build()
+            .unwrap();
+        let sim1 = scene.run(rpm, 1.0).unwrap();
+        let sim2 = scene.run(rpm * 2.0, 1.0).unwrap();
+        // Doubling driver RPM doubles driven RPM
+        prop_assert!((sim2.rpm("driven") - 2.0 * sim1.rpm("driven")).abs() < 1e-6);
     }
 
     // --- Backlash ---

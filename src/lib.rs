@@ -57,4 +57,5 @@ pub mod gear;
 pub mod helical;
 pub mod module;
 pub mod pitch;
+pub mod scene;
 pub mod tooth;

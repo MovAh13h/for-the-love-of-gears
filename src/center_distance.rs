@@ -1,3 +1,18 @@
+//! Centre distance — the shaft spacing required for two gears to mesh.
+//!
+//! Centre distance `a` is the distance between the rotation axes of two mating gears.
+//! It must equal the sum of the two pitch circle radii:
+//!
+//! ```text
+//! a = (d1 + d2) / 2 = m(z1 + z2) / 2
+//! ```
+//!
+//! Getting this right is critical: if shafts are too close the gears bind;
+//! too far and the teeth disengage, increasing backlash and reducing load capacity.
+//!
+//! [`CenterDistance`] provides two constructors — from raw reference diameters or
+//! directly from module and tooth counts.
+
 /// The distance between the rotation axes of two meshing gears: `a = (d1 + d2) / 2`.
 ///
 /// Center distance determines where the two gear shafts must be mounted. If the

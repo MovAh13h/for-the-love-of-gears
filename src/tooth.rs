@@ -1,19 +1,34 @@
+//! Individual tooth dimensions — addendum, dedendum, thickness, depth, and clearance.
+//!
+//! All dimensions are measured relative to the pitch circle and scale proportionally
+//! with module `m`:
+//!
+//! | Dimension | Symbol | Formula | Description |
+//! |---|---|---|---|
+//! | Addendum | `ha` | `1.00 × m` | Radial height above pitch circle |
+//! | Dedendum | `hf` | `1.25 × m` | Radial depth below pitch circle |
+//! | Tooth depth | `h` | `2.25 × m` | Full height root to tip (`ha + hf`) |
+//! | Clearance | `c` | `0.25 × m` | Tip-to-root gap in the mating gear (`hf − ha`) |
+//! | Tooth thickness | `s` | `πm / 2` | Arc length of one tooth at pitch circle |
+//!
+//! ```text
+//!  ──────┬───┬──────  tip circle    da = m(z + 2)
+//!        │   │                      ↑ addendum ha = 1.00 × m
+//!  ──────┴───┴──────  pitch circle  d  = mz
+//!       /     \                     ↓ dedendum hf = 1.25 × m
+//!  ────/───────\────  root circle   df = m(z − 2.5)
+//! ```
+//!
+//! The dedendum is intentionally deeper than the addendum so the tip of a mating gear
+//! never bottoms out — the extra `0.25 × m` becomes the [`Clearance`] gap.
+//!
+//! For real gears, tooth thickness is reduced by half the backlash to create the
+//! intentional clearance between mating tooth flanks. See [`crate::backlash`] and
+//! [`crate::gear::Gear::thinned_tooth_thickness`].
+
 use std::f64::consts::PI;
 
 pub(crate) const DEDENDUM_COEFF: f64 = 1.25;
-
-// Tooth geometry — all dimensions relative to the pitch circle.
-// Addendum = 1.00m, dedendum = DEDENDUM_COEFF × m.
-//
-//  ──────┬───┬──────  tip circle    da = m(z + 2)
-//        │   │                      ↑ addendum ha = 1.00m
-//  ──────┴───┴──────  pitch circle  d  = mz        (reference line)
-//       /     \                     ↓ dedendum hf = 1.25m
-//  ────/───────\────  root circle   df = m(z − 2.5)
-//
-//  tooth depth  h = ha + hf = 2.25m
-//  clearance    c = hf − ha = 0.25m   (ISO 54 — gap between mating gear tip and root)
-//  thickness    s = πm / 2            (arc length of one tooth at pitch circle)
 
 /// Radial distance from the pitch circle up to the tooth tip: `ha = 1.00 × m`.
 ///
