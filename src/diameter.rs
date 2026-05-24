@@ -50,9 +50,10 @@ impl ReferenceDiameter {
 
 /// Outer diameter of the gear — the diameter you would measure with calipers: `da = m(z + 2)`.
 ///
-/// The tip circle sits one [`crate::tooth::Addendum`] above the pitch circle on
-/// each side (hence `+2` in the formula). This is the dimension that determines
-/// whether the gear fits in its housing.
+/// The tip circle sits one [`crate::tooth::Addendum`] radially outward from the
+/// pitch circle on each side. The `+2` comes from the addendum coefficient of
+/// `1.00` applied on both sides: `2 × 1.00 = 2`.
+/// This is the dimension that determines whether the gear fits in its housing.
 ///
 /// ```text
 ///  pitch circle ─── d  = mz
@@ -83,8 +84,9 @@ impl TipDiameter {
 
 /// Diameter at the base of the tooth spaces: `df = m(z − 2.5)`.
 ///
-/// The root circle sits one [`crate::tooth::Dedendum`] below the pitch circle
-/// on each side (hence `−2.5` since `hf = 1.25m`, so `2 × 1.25 = 2.5`).
+/// The root circle sits one [`crate::tooth::Dedendum`] radially inward from
+/// the pitch circle on each side. The `−2.5` comes from the dedendum coefficient
+/// of `1.25` applied on both sides: `2 × 1.25 = 2.5`.
 /// The root fillet lives at this depth.
 ///
 /// ```text

@@ -30,8 +30,8 @@ pub struct CenterDistance(f64);
 impl CenterDistance {
     /// Compute center distance from the two reference diameters: `a = (d1 + d2) / 2`.
     ///
-    /// Use this when you already have [`crate::diameter::ReferenceDiameter`] values
-    /// for both gears.
+    /// `d1` and `d2` are in millimetres. Use this when you already have
+    /// [`crate::diameter::ReferenceDiameter`] values for both gears.
     ///
     /// ```
     /// use for_the_love_of_gears::center_distance::CenterDistance;
@@ -44,7 +44,8 @@ impl CenterDistance {
 
     /// Compute center distance from module and tooth counts: `a = m(z1 + z2) / 2`.
     ///
-    /// Shorthand when both gears share the same module (required for meshing).
+    /// `module` is in millimetres. Shorthand when both gears share the same
+    /// module (required for meshing).
     ///
     /// ```
     /// use for_the_love_of_gears::center_distance::CenterDistance;

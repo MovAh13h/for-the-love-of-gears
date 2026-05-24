@@ -1,4 +1,7 @@
-use for_the_love_of_gears::{gear::Gear, module::Module};
+use for_the_love_of_gears::{
+    gear::{Gear, GearError},
+    module::Module,
+};
 use std::f64::consts::PI;
 
 fn gear_m2_z20() -> Gear {
@@ -9,28 +12,104 @@ fn gear_m2_z20() -> Gear {
         .unwrap()
 }
 
-// --- Builder ---
+// --- Builder: required fields ---
 
 #[test]
-fn builder_requires_module() {
-    let result = Gear::builder().teeth(20).build();
-    assert_eq!(result, Err("module is required"));
+fn build_requires_module() {
+    assert_eq!(
+        Gear::builder().teeth(20).build(),
+        Err(GearError::ModuleRequired)
+    );
 }
 
 #[test]
-fn builder_requires_teeth() {
-    let result = Gear::builder().module(Module::Specified(2.0)).build();
-    assert_eq!(result, Err("teeth is required"));
+fn build_requires_teeth() {
+    assert_eq!(
+        Gear::builder().module(Module::Specified(2.0)).build(),
+        Err(GearError::TeethRequired)
+    );
+}
+
+// --- Builder: validation ---
+
+#[test]
+fn build_rejects_zero_module() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(0.0))
+            .teeth(20)
+            .build(),
+        Err(GearError::ModuleMustBePositive)
+    );
 }
 
 #[test]
-fn builder_defaults_pressure_angle_to_20() {
-    let gear = gear_m2_z20();
-    assert_eq!(gear.pressure_angle(), 20.0);
+fn build_rejects_negative_module() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(-1.0))
+            .teeth(20)
+            .build(),
+        Err(GearError::ModuleMustBePositive)
+    );
 }
 
 #[test]
-fn builder_accepts_custom_pressure_angle() {
+fn build_rejects_zero_teeth() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(2.0))
+            .teeth(0)
+            .build(),
+        Err(GearError::TeethMustBePositive)
+    );
+}
+
+#[test]
+fn build_rejects_zero_pressure_angle() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(2.0))
+            .teeth(20)
+            .pressure_angle(0.0)
+            .build(),
+        Err(GearError::PressureAngleMustBePositive)
+    );
+}
+
+#[test]
+fn build_rejects_zero_face_width() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(2.0))
+            .teeth(20)
+            .face_width(0.0)
+            .build(),
+        Err(GearError::FaceWidthMustBePositive)
+    );
+}
+
+#[test]
+fn build_rejects_negative_face_width() {
+    assert_eq!(
+        Gear::builder()
+            .module(Module::Specified(2.0))
+            .teeth(20)
+            .face_width(-5.0)
+            .build(),
+        Err(GearError::FaceWidthMustBePositive)
+    );
+}
+
+// --- Builder: defaults and optional fields ---
+
+#[test]
+fn build_defaults_pressure_angle_to_20() {
+    assert_eq!(gear_m2_z20().pressure_angle(), 20.0);
+}
+
+#[test]
+fn build_accepts_custom_pressure_angle() {
     let gear = Gear::builder()
         .module(Module::Specified(2.0))
         .teeth(20)
@@ -41,13 +120,12 @@ fn builder_accepts_custom_pressure_angle() {
 }
 
 #[test]
-fn builder_face_width_is_optional() {
-    let gear = gear_m2_z20();
-    assert_eq!(gear.face_width(), None);
+fn build_face_width_is_none_by_default() {
+    assert_eq!(gear_m2_z20().face_width(), None);
 }
 
 #[test]
-fn builder_stores_face_width() {
+fn build_stores_face_width() {
     let gear = Gear::builder()
         .module(Module::Specified(2.0))
         .teeth(20)
@@ -113,6 +191,36 @@ fn circular_pitch() {
 // --- Gear pair ---
 
 #[test]
+fn can_mesh_with_same_module() {
+    let g1 = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .build()
+        .unwrap();
+    let g2 = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .build()
+        .unwrap();
+    assert!(g1.can_mesh_with(&g2));
+}
+
+#[test]
+fn cannot_mesh_with_different_module() {
+    let g1 = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .build()
+        .unwrap();
+    let g2 = Gear::builder()
+        .module(Module::Specified(3.0))
+        .teeth(20)
+        .build()
+        .unwrap();
+    assert!(!g1.can_mesh_with(&g2));
+}
+
+#[test]
 fn center_distance_to() {
     let g1 = Gear::builder()
         .module(Module::Specified(2.0))
@@ -121,15 +229,15 @@ fn center_distance_to() {
         .unwrap();
     let g2 = Gear::builder()
         .module(Module::Specified(2.0))
-        .teeth(30)
+        .teeth(40)
         .build()
         .unwrap();
-    // a = (40 + 60) / 2 = 50
-    assert_eq!(g1.center_distance_to(&g2).value(), 50.0);
+    // d1=40, d2=80 → a=60
+    assert_eq!(g1.center_distance_to(&g2).value(), 60.0);
 }
 
 #[test]
-fn center_distance_symmetric() {
+fn center_distance_is_symmetric() {
     let g1 = Gear::builder()
         .module(Module::Specified(2.0))
         .teeth(20)
@@ -137,11 +245,47 @@ fn center_distance_symmetric() {
         .unwrap();
     let g2 = Gear::builder()
         .module(Module::Specified(2.0))
-        .teeth(30)
+        .teeth(40)
         .build()
         .unwrap();
     assert_eq!(
         g1.center_distance_to(&g2).value(),
         g2.center_distance_to(&g1).value()
     );
+}
+
+#[test]
+fn gear_ratio_reduction() {
+    let driver = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .build()
+        .unwrap();
+    let driven = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .build()
+        .unwrap();
+    assert_eq!(driver.gear_ratio_to(&driven), 2.0);
+}
+
+#[test]
+fn gear_ratio_increase() {
+    let driver = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .build()
+        .unwrap();
+    let driven = Gear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .build()
+        .unwrap();
+    assert_eq!(driver.gear_ratio_to(&driven), 0.5);
+}
+
+#[test]
+fn gear_ratio_equal_gears_is_one() {
+    let g = gear_m2_z20();
+    assert_eq!(g.gear_ratio_to(&g), 1.0);
 }

@@ -45,12 +45,17 @@ impl CircularPitch {
 
 /// The number of teeth per inch of pitch circle diameter (imperial system).
 ///
-/// Diametral pitch `DP` is the imperial counterpart to module. It runs
-/// *inversely* to module and tooth size — a higher `DP` means smaller, finer
-/// teeth. Common in inch-unit industries (North America, some aerospace).
+/// "Diametral" means *of or relating to a diameter* — `DP` counts how many
+/// teeth fit per inch of pitch circle diameter. It is a ratio (teeth/inch),
+/// not a length. Do not confuse it with [`CircularPitch`], which is an arc
+/// length in mm between adjacent teeth.
+///
+/// `DP` runs *inversely* to module and tooth size — a higher `DP` means
+/// smaller, finer teeth. Common in inch-unit industries (North America,
+/// some aerospace).
 ///
 /// ```text
-/// DP = 25.4 / m      (25.4 mm = 1 inch)
+/// DP = z / d_inches = 25.4 / m      (25.4 mm = 1 inch)
 /// ```
 ///
 /// # Comparison
@@ -61,7 +66,8 @@ impl CircularPitch {
 /// | 2 | 12.7 | medium |
 /// | 4 | 6.35 | coarse |
 ///
-/// For metric work, use [`CircularPitch`] instead.
+/// For metric work, use [`crate::module::Module`] directly — module is the
+/// metric tooth size unit and is all you need.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DiametralPitch(f64);
 

@@ -1,22 +1,23 @@
 use std::f64::consts::PI;
 
-// Tooth geometry — all dimensions relative to the pitch circle:
+// Tooth geometry — all dimensions relative to the pitch circle.
+// Ratios 1.00, 1.25, and 0.25 are ISO standard tooth proportions.
 //
 //  ──────┬───┬──────  tip circle    da = m(z + 2)
-//        │   │                      ↑ addendum ha = m
+//        │   │                      ↑ addendum ha = 1.00m
 //  ──────┴───┴──────  pitch circle  d  = mz        (reference line)
 //       /     \                     ↓ dedendum hf = 1.25m
 //  ────/───────\────  root circle   df = m(z − 2.5)
 //
 //  tooth depth  h = ha + hf = 2.25m
-//  clearance    c = hf − ha = 0.25m   (gap between mating gear tip and root)
+//  clearance    c = hf − ha = 0.25m   (ISO 54 — gap between mating gear tip and root)
 //  thickness    s = πm / 2            (arc length of one tooth at pitch circle)
 
-/// Radial distance from the pitch circle up to the tooth tip: `ha = m`.
+/// Radial distance from the pitch circle up to the tooth tip: `ha = 1.00 × m`.
 ///
-/// The addendum is exactly one module in height. It is the portion of the tooth
-/// that extends radially *outward* from the pitch circle and meshes into
-/// the dedendum space of the mating gear.
+/// The addendum is exactly one module in height — it is the portion of the tooth that
+/// extends radially *outward* from the pitch circle and meshes into the
+/// dedendum space of the mating gear.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Addendum(f64);
 
@@ -32,11 +33,11 @@ impl Addendum {
     }
 }
 
-/// Radial distance from the pitch circle down to the tooth root: `hf = 1.25m`.
+/// Radial distance from the pitch circle down to the tooth root: `hf = 1.25 × m`.
 ///
-/// The dedendum is 1.25 modules deep radially *inward* from the pitch circle —
-/// slightly deeper than the addendum so that the tip of the mating gear never bottoms out. The extra 0.25m becomes
-/// the [`Clearance`] gap.
+/// The dedendum is 1.25 modules deep radially *inward* from the pitch circle — deliberately
+/// deeper than the addendum so the mating gear tip never bottoms out.
+/// The extra 0.25 × module becomes the [`Clearance`] gap.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Dedendum(f64);
 
@@ -52,10 +53,10 @@ impl Dedendum {
     }
 }
 
-/// Full radial height of a tooth from root to tip: `h = 2.25m`.
+/// Full radial height of a tooth from root to tip: `h = 2.25 × m`.
 ///
 /// Tooth depth is the sum of [`Addendum`] and [`Dedendum`]:
-/// `h = ha + hf = m + 1.25m = 2.25m`.
+/// `h = ha + hf = 1.00m + 1.25m = 2.25m`.
 ///
 /// This is the minimum radial space a tooth occupies and determines how deep
 /// the gear blank must be cut.
@@ -99,9 +100,9 @@ impl ToothThickness {
 
 /// Radial gap between the tip of one gear's tooth and the root of the mating gear: `c = 0.25 × m`.
 ///
+/// The 0.25 is a fixed ISO ratio, not a fixed value: it falls out of
+/// the difference between dedendum and addendum coefficients: `c = hf − ha = 1.25m − 1.00m = 0.25m`.
 /// Clearance scales with module — a larger gear has proportionally larger clearance.
-/// The 0.25 is a fixed ISO ratio, not a fixed value: it falls out of the difference
-/// between dedendum and addendum: `c = hf − ha = 1.25m − 1.00m = 0.25m`.
 ///
 /// Clearance prevents the tip of one gear from pressing against the root fillet
 /// of its mate, which would cause jamming and accelerated wear.
