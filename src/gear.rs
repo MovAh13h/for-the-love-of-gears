@@ -1,6 +1,7 @@
 use std::{f64::consts::PI, fmt};
 
 use crate::{
+    backlash::{Backlash, NormalBacklash},
     center_distance::CenterDistance,
     contact_ratio::TransverseContactRatio,
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
@@ -148,6 +149,35 @@ impl fmt::Display for GearError {
 /// assert_eq!(driver.center_distance_to(&driven).value(), 60.0); // (40+80)/2
 /// assert_eq!(driver.gear_ratio_to(&driven), 2.0); // 40/20
 /// ```
+///
+/// # Backlash
+///
+/// Theoretical tooth thickness is `s = πm / 2`. Real gears are cut slightly
+/// thinner to leave a small gap (backlash) between mating teeth, preventing
+/// jamming due to thermal expansion and manufacturing tolerances.
+///
+/// [`Gear::thinned_tooth_thickness`] returns the per-gear tooth thickness after
+/// applying a total pair backlash. [`Gear::normal_backlash`] converts the
+/// circular backlash to the value a feeler gauge would measure against the
+/// tooth flank.
+///
+/// ```
+/// use for_the_love_of_gears::{backlash::Backlash, gear::Gear, module::Module};
+/// use std::f64::consts::PI;
+///
+/// let g = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
+///
+/// // Total pair backlash of 0.08 mm — each gear is thinned by 0.04 mm
+/// let jt = Backlash::new(0.08);
+///
+/// // Thinned tooth thickness: s' = πm/2 − jt/2 = π − 0.04
+/// let s_prime = g.thinned_tooth_thickness(jt).value();
+/// assert!((s_prime - (PI - 0.04)).abs() < 1e-10);
+///
+/// // Normal backlash: jn = jt·cos(α) — smaller than the circular gap
+/// let jn = g.normal_backlash(jt).value();
+/// assert!(jn < jt.value());
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Gear {
     module: Module,
@@ -239,7 +269,10 @@ impl Gear {
         ToothDepth::from_module(self.module.value())
     }
 
-    /// Tooth thickness measured along the pitch circle in mm: `s = πm / 2`.
+    /// Theoretical tooth thickness along the pitch circle in mm: `s = πm / 2`.
+    ///
+    /// This is the zero-backlash value. For the thinned thickness used in real
+    /// gear pairs, see [`Gear::thinned_tooth_thickness`].
     pub fn tooth_thickness(&self) -> ToothThickness {
         ToothThickness::from_module(self.module.value())
     }
@@ -304,6 +337,46 @@ impl Gear {
             self.reference_diameter().value(),
             other.reference_diameter().value(),
         )
+    }
+
+    /// Tooth thickness after applying backlash: `s' = πm / 2 − jt / 2`.
+    ///
+    /// Backlash is a pair-level property. Under the standard equal-distribution
+    /// assumption each gear is thinned by `jt / 2`, so that the two gears
+    /// together produce the full gap `jt`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{backlash::Backlash, gear::Gear, module::Module};
+    /// use std::f64::consts::PI;
+    ///
+    /// let g = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
+    /// let jt = Backlash::new(0.08);
+    /// let s_prime = g.thinned_tooth_thickness(jt).value();
+    /// assert!((s_prime - (PI * 2.0 / 2.0 - 0.04)).abs() < 1e-10);
+    /// ```
+    pub fn thinned_tooth_thickness(&self, backlash: Backlash) -> ToothThickness {
+        ToothThickness::new(crate::backlash::thinned_thickness_spur(
+            self.module.value(),
+            backlash,
+        ))
+    }
+
+    /// Normal backlash from circular backlash: `jn = jt · cos(α)`.
+    ///
+    /// Normal backlash is measured perpendicular to the tooth flank — it is
+    /// what a feeler gauge reads when held normal to the tooth surface.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{backlash::Backlash, gear::Gear, module::Module};
+    ///
+    /// let g = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
+    /// let jt = Backlash::new(0.08);
+    /// let jn = g.normal_backlash(jt).value();
+    /// let expected = 0.08 * 20.0_f64.to_radians().cos();
+    /// assert!((jn - expected).abs() < 1e-10);
+    /// ```
+    pub fn normal_backlash(&self, backlash: Backlash) -> NormalBacklash {
+        NormalBacklash::from_spur(backlash, self.pressure_angle)
     }
 
     /// Transverse contact ratio between this gear and `other`: `εα`.

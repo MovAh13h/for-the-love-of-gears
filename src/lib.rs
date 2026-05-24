@@ -38,7 +38,18 @@
 //! standards (ISO 54, ISO 1328). Angles are in **degrees** at API boundaries
 //! and converted to radians internally. The one imperial type, [`pitch::DiametralPitch`],
 //! returns teeth per inch and is clearly marked as such.
+//!
+//! # Backlash
+//!
+//! Theoretical gear geometry assumes zero clearance between mating teeth. Real
+//! gears deliberately leave a small gap — **backlash** — to prevent jamming.
+//! The [`backlash`] module provides [`backlash::Backlash`] (circular gap, mm)
+//! and [`backlash::NormalBacklash`] (gap perpendicular to the tooth flank, mm).
+//! Both [`gear::Gear`] and [`helical::HelicalGear`] expose
+//! `thinned_tooth_thickness` and `normal_backlash` methods that apply a
+//! specified backlash to the theoretical tooth geometry.
 
+pub mod backlash;
 pub mod center_distance;
 pub mod contact_ratio;
 pub mod diameter;

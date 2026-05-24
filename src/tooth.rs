@@ -94,6 +94,10 @@ impl ToothThickness {
         Self(PI * m / 2.0)
     }
 
+    pub(crate) fn new(value: f64) -> Self {
+        Self(value)
+    }
+
     /// Returns the tooth thickness in millimetres.
     pub fn value(self) -> f64 {
         self.0

@@ -1,6 +1,7 @@
 use std::f64::consts::PI;
 
 use crate::{
+    backlash::{Backlash, NormalBacklash},
     center_distance::CenterDistance,
     contact_ratio::{OverlapRatio, TotalContactRatio, TransverseContactRatio},
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
@@ -160,6 +161,49 @@ impl Lead {
 /// assert!(driver.can_mesh_with(&driven));
 /// assert_eq!(driver.gear_ratio_to(&driven), 2.0);
 /// ```
+///
+/// # Backlash
+///
+/// Helical gears have two thinning effects to account for. Backlash `jt` is
+/// specified as the circular gap in the **transverse plane**. When projected
+/// into the **normal plane** (where the tooth profile is cut), the thinning
+/// per gear becomes `(jt / 2) · cos(ψ)` because the helix angle angles the
+/// tooth relative to the transverse plane:
+///
+/// ```text
+///  transverse thinning per gear:  Δst = jt / 2
+///  normal-plane thinning:         Δsn = Δst · cos(ψ) = (jt / 2) · cos(ψ)
+///  thinned normal tooth thickness: sn' = πmn / 2 − (jt / 2) · cos(ψ)
+/// ```
+///
+/// Normal backlash has an additional `cos(ψ)` factor compared with a spur gear:
+///
+/// ```text
+///  spur:    jn = jt · cos(α)
+///  helical: jn = jt · cos(αt) · cos(ψ)
+/// ```
+///
+/// ```
+/// use for_the_love_of_gears::{
+///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
+/// };
+/// use std::f64::consts::PI;
+///
+/// let g = HelicalGear::builder()
+///     .module(Module::Specified(2.0)).teeth(20)
+///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+///     .build().unwrap();
+///
+/// let jt = Backlash::new(0.08);
+///
+/// // Normal-plane thinned thickness: sn' = πmn/2 − (jt/2)·cos(ψ)
+/// let s_prime = g.thinned_tooth_thickness(jt).value();
+/// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
+/// assert!((s_prime - expected).abs() < 1e-10);
+///
+/// // Normal backlash: jn = jt·cos(αt)·cos(ψ)
+/// assert!(g.normal_backlash(jt).value() < jt.value());
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct HelicalGear {
     module: Module,
@@ -275,7 +319,10 @@ impl HelicalGear {
         ToothDepth::from_module(self.module.value())
     }
 
-    /// Tooth thickness in the normal plane in mm: `s = π·mn / 2`.
+    /// Theoretical tooth thickness in the normal plane in mm: `s = π·mn / 2`.
+    ///
+    /// This is the zero-backlash value. For the thinned thickness used in real
+    /// gear pairs, see [`HelicalGear::thinned_tooth_thickness`].
     pub fn tooth_thickness(&self) -> ToothThickness {
         ToothThickness::from_module(self.module.value())
     }
@@ -357,6 +404,57 @@ impl HelicalGear {
             self.reference_diameter().value(),
             other.reference_diameter().value(),
         )
+    }
+
+    /// Normal-plane tooth thickness after applying backlash: `sn' = πmn / 2 − (jt / 2) · cos(ψ)`.
+    ///
+    /// Backlash `jt` is a pair-level circular value. The thinning `jt / 2` is
+    /// applied in the transverse plane and projected into the normal plane via
+    /// `cos(ψ)`, giving the thinned normal tooth thickness.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{
+    ///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
+    /// };
+    /// use std::f64::consts::PI;
+    ///
+    /// let g = HelicalGear::builder()
+    ///     .module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// let jt = Backlash::new(0.08);
+    /// let s_prime = g.thinned_tooth_thickness(jt).value();
+    /// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
+    /// assert!((s_prime - expected).abs() < 1e-10);
+    /// ```
+    pub fn thinned_tooth_thickness(&self, backlash: Backlash) -> ToothThickness {
+        ToothThickness::new(crate::backlash::thinned_thickness_helical(
+            self.module.value(),
+            backlash,
+            self.helix_angle,
+        ))
+    }
+
+    /// Normal backlash from circular backlash: `jn = jt · cos(αt) · cos(ψ)`.
+    ///
+    /// Normal backlash is measured perpendicular to the helical tooth flank.
+    /// It is smaller than the circular backlash `jt` due to both the pressure
+    /// angle and the helix angle.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{
+    ///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
+    /// };
+    ///
+    /// let g = HelicalGear::builder()
+    ///     .module(Module::Specified(2.0)).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// let jt = Backlash::new(0.08);
+    /// assert!(g.normal_backlash(jt).value() < jt.value());
+    /// ```
+    pub fn normal_backlash(&self, backlash: Backlash) -> NormalBacklash {
+        NormalBacklash::from_helical(backlash, self.transverse_pressure_angle(), self.helix_angle)
     }
 
     /// Transverse contact ratio between this gear and `other`: `εα`.

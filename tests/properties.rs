@@ -1,4 +1,5 @@
 use for_the_love_of_gears::{
+    backlash::Backlash,
     center_distance::CenterDistance,
     contact_ratio::OverlapRatio,
     diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
@@ -425,6 +426,59 @@ proptest! {
         prop_assert_eq!(
             g1.transverse_contact_ratio_with(&g2).value(),
             g2.transverse_contact_ratio_with(&g1).value()
+        );
+    }
+
+    // --- Backlash ---
+
+    #[test]
+    fn prop_spur_pair_thinning_sums_to_backlash(
+        m  in pos_module(),
+        z  in any_teeth(),
+        jt in 0.0f64..=1.0f64,
+    ) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        let backlash = Backlash::new(jt);
+        let theoretical = g.tooth_thickness().value();
+        let thinned = g.thinned_tooth_thickness(backlash).value();
+        prop_assert!((2.0 * (theoretical - thinned) - jt).abs() < 1e-10);
+    }
+
+    #[test]
+    fn prop_spur_thinned_thickness_less_than_theoretical(
+        m  in pos_module(),
+        z  in any_teeth(),
+        jt in 1e-6f64..=1.0f64,
+    ) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        let backlash = Backlash::new(jt);
+        prop_assert!(g.thinned_tooth_thickness(backlash).value() < g.tooth_thickness().value());
+    }
+
+    #[test]
+    fn prop_spur_normal_backlash_less_than_circular(
+        m  in pos_module(),
+        z  in any_teeth(),
+        jt in 1e-6f64..=1.0f64,
+    ) {
+        let g = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        let backlash = Backlash::new(jt);
+        prop_assert!(g.normal_backlash(backlash).value() < backlash.value());
+    }
+
+    #[test]
+    fn prop_helical_normal_backlash_less_than_spur_normal_backlash(
+        m   in pos_module(),
+        z   in any_teeth(),
+        psi in 0.1f64..89.9f64,
+        jt  in 1e-6f64..=1.0f64,
+    ) {
+        let g_spur = Gear::builder().module(Module::Specified(m)).teeth(z).build().unwrap();
+        let g_helical = helical_gear(m, z, psi, HelixHand::Right);
+        let backlash = Backlash::new(jt);
+        prop_assert!(
+            g_helical.normal_backlash(backlash).value()
+                < g_spur.normal_backlash(backlash).value()
         );
     }
 }
