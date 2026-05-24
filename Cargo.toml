@@ -1,0 +1,14 @@
+[package]
+name = "for_the_love_of_gears"
+version = "0.1.0"
+edition = "2024"
+description = "ISO-standard gear geometry — module, pitch, tooth profile, diameters, and centre distance."
+license = "MIT"
+keywords = ["gear", "mechanical", "engineering", "iso", "geometry"]
+categories = ["science", "mathematics"]
+repository = "https://github.com/MovAh13h/for-the-love-of-gears"
+homepage = "https://github.com/MovAh13h/for-the-love-of-gears"
+documentation = "https://docs.rs/for_the_love_of_gears"
+readme = "README.md"
+
+[dependencies]
