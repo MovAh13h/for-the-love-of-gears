@@ -188,6 +188,12 @@ fn circular_pitch() {
     assert!((gear_m2_z20().circular_pitch().value() - 2.0 * PI).abs() < 1e-10);
 }
 
+#[test]
+fn diametral_pitch() {
+    // m=2 → DP = 25.4/2 = 12.7 teeth/inch
+    assert!((gear_m2_z20().diametral_pitch().value() - 12.7).abs() < 1e-10);
+}
+
 // --- Gear pair ---
 
 #[test]

@@ -3,6 +3,7 @@ use for_the_love_of_gears::{
     helical::{HelicalGear, HelixHand},
     module::Module,
 };
+use std::f64::consts::PI;
 
 fn gear_mn2_z20_psi20_right() -> HelicalGear {
     HelicalGear::builder()
@@ -401,4 +402,75 @@ fn center_distance() {
         .unwrap();
     let expected = (g1.reference_diameter().value() + g2.reference_diameter().value()) / 2.0;
     assert!((g1.center_distance_to(&g2).value() - expected).abs() < 1e-10);
+}
+
+// --- Contact ratio ---
+
+#[test]
+fn transverse_contact_ratio_positive() {
+    let g1 = gear_mn2_z20_psi20_right();
+    let g2 = HelicalGear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
+    assert!(g1.transverse_contact_ratio_with(&g2).value() > 1.0);
+}
+
+#[test]
+fn overlap_ratio_requires_face_width() {
+    assert!(gear_mn2_z20_psi20_right().overlap_ratio().is_none());
+}
+
+#[test]
+fn overlap_ratio_formula() {
+    // b=30mm, ψ=20°, mn=2mm → εβ = 30·sin(20°) / (π·2)
+    let g = HelicalGear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
+    let expected = 30.0 * 20.0_f64.to_radians().sin() / (PI * 2.0);
+    assert!((g.overlap_ratio().unwrap().value() - expected).abs() < 1e-10);
+}
+
+#[test]
+fn total_contact_ratio_requires_face_width() {
+    let g1 = gear_mn2_z20_psi20_right();
+    let g2 = HelicalGear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
+    assert!(g1.total_contact_ratio_with(&g2).is_none());
+}
+
+#[test]
+fn total_contact_ratio_greater_than_transverse() {
+    let g1 = HelicalGear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
+    let g2 = HelicalGear::builder()
+        .module(Module::Specified(2.0))
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .face_width(30.0)
+        .build()
+        .unwrap();
+    let ea = g1.transverse_contact_ratio_with(&g2).value();
+    let eg = g1.total_contact_ratio_with(&g2).unwrap().value();
+    assert!(eg > ea);
 }

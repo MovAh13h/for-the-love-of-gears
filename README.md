@@ -54,6 +54,40 @@ assert_eq!(pinion.center_distance_to(&wheel).value(), 60.0); // (40 + 80) / 2
 assert_eq!(pinion.gear_ratio_to(&wheel), 2.0);               // 40 / 20
 ```
 
+```rust
+use for_the_love_of_gears::{
+    helical::{HelicalGear, HelixHand},
+    module::Module,
+};
+
+// Helical gear pair — opposite hands required for parallel-shaft meshing
+let driver = HelicalGear::builder()
+    .module(Module::Specified(2.0))
+    .teeth(20)
+    .helix_angle(20.0)
+    .helix_hand(HelixHand::Right)
+    .face_width(30.0)
+    .build()?;
+
+let driven = HelicalGear::builder()
+    .module(Module::Specified(2.0))
+    .teeth(40)
+    .helix_angle(20.0)
+    .helix_hand(HelixHand::Left)
+    .face_width(30.0)
+    .build()?;
+
+assert!(driver.can_mesh_with(&driven));
+
+// Transverse contact ratio (how many tooth pairs share load on average)
+let ea = driver.transverse_contact_ratio_with(&driven);
+assert!(ea.value() > 1.0);
+
+// Total contact ratio (transverse + axial overlap — requires face width)
+let eg = driver.total_contact_ratio_with(&driven).unwrap();
+assert!(eg.value() > ea.value()); // helical overlap adds smoothness
+```
+
 ---
 
 ## Modules

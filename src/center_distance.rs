@@ -30,7 +30,7 @@ pub struct CenterDistance(f64);
 impl CenterDistance {
     /// Compute center distance from the two reference diameters: `a = (d1 + d2) / 2`.
     ///
-    /// `d1` and `d2` are in millimetres. Use this when you already have
+    /// `d1` and `d2` are in **millimetres**. Use this when you already have
     /// [`crate::diameter::ReferenceDiameter`] values for both gears.
     ///
     /// ```

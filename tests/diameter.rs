@@ -21,3 +21,23 @@ fn base_diameter_20deg_m2_z20() {
     let expected = 40.0 * 20.0_f64.to_radians().cos();
     assert!((db - expected).abs() < 1e-10);
 }
+
+#[test]
+fn tip_diameter_from_helical_mn2_psi20_z20() {
+    // mn=2, ψ=20°, z=20 → mt = 2/cos(20°), da = mt·z + 2·mn
+    let mn = 2.0_f64;
+    let mt = mn / 20.0_f64.to_radians().cos();
+    let da = TipDiameter::from_helical(mt, mn, 20);
+    let expected = mt * 20.0 + 2.0 * mn;
+    assert!((da.value() - expected).abs() < 1e-10);
+}
+
+#[test]
+fn root_diameter_from_helical_mn2_psi20_z20() {
+    // mn=2, ψ=20°, z=20 → mt = 2/cos(20°), df = mt·z − 2.5·mn
+    let mn = 2.0_f64;
+    let mt = mn / 20.0_f64.to_radians().cos();
+    let df = RootDiameter::from_helical(mt, mn, 20);
+    let expected = mt * 20.0 - 2.5 * mn;
+    assert!((df.value() - expected).abs() < 1e-10);
+}

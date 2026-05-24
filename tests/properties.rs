@@ -240,7 +240,7 @@ proptest! {
     #[test]
     fn prop_helical_diameter_ordering(
         m   in 0.1f64..=50.0f64,
-        z   in 3u32..=200u32,
+        z   in teeth_min3(),
         psi in 0.1f64..89.9f64,
     ) {
         let g = helical_gear(m, z, psi, HelixHand::Right);
