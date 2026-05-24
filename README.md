@@ -10,22 +10,9 @@
 [![Docs.rs](https://docs.rs/for_the_love_of_gears/badge.svg)](https://docs.rs/for_the_love_of_gears)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/MovAh13h/for-the-love-of-gears/blob/master/LICENSE)
 
-ISO-standard spur and helical gear geometry in Rust. Define a gear from its module and tooth count, then read off every dimension — diameters, tooth profile, pitch, contact ratio, and backlash — as typed values in millimetres. Compose gears into a `GearScene` to simulate multi-stage gear trains and query per-shaft RPM, direction, and angular position.
+ISO-standard gear geometry for Rust. Give a gear its module and tooth count; get back every dimension — diameters, tooth profile, pitch, contact ratio, and backlash — as typed millimetre values. Compose gears into a `GearScene` to simulate multi-stage gear trains.
 
----
-
-## Features
-
-- **Spur gears** — full ISO geometry: 4 diameters, tooth profile, pitch, contact ratio, backlash
-- **Helical gears** — normal/transverse module, helix geometry, axial pitch, lead, overlap ratio
-- **Gear scenes** — mount gears on shafts, declare meshes, run kinematic simulation
-- **Backlash** — circular and normal backlash, thinned tooth thickness
-- **Contact ratio** — transverse εα, overlap εβ, total εγ
-- **Typed values** — every output is a newtype (`ReferenceDiameter`, `ToothThickness`, …), not a bare `f64`
-- **Builder pattern** — validated construction with clear errors for missing or invalid inputs
-- **245 tests** — unit, integration, and property-based (proptest)
-
----
+**[Full API reference on docs.rs →](https://docs.rs/for_the_love_of_gears)**
 
 ## Installation
 
@@ -34,88 +21,45 @@ ISO-standard spur and helical gear geometry in Rust. Define a gear from its modu
 for_the_love_of_gears = "0.1"
 ```
 
----
+## What's included
 
-## Quick start
+- **Spur gears** — reference, tip, root, and base diameters; addendum, dedendum, tooth depth, clearance, tooth thickness, circular and diametral pitch
+- **Helical gears** — normal and transverse module, transverse pressure angle, axial pitch, lead; all spur dimensions in both planes
+- **Contact ratio** — transverse εα, overlap εβ (helical), total εγ
+- **Backlash** — circular and normal backlash; thinned tooth thickness
+- **Gear scenes** — mount gears on named shafts, declare meshes, run a kinematic simulation to query RPM, rotation direction, and angular position
+- **Type-safe outputs** — every result is a distinct type (`ReferenceDiameter`, `ToothThickness`, …) so you can't accidentally mix up values
 
-### Spur gear
-
-```rust
-use for_the_love_of_gears::{gear::Gear, module::Module};
-
-let gear = Gear::builder()
-    .module(Module::Specified(2.0))
-    .teeth(20)
-    .build()?;
-
-assert_eq!(gear.reference_diameter().value(), 40.0); // d  = mz
-assert_eq!(gear.tip_diameter().value(),       44.0); // da = m(z + 2)
-assert_eq!(gear.root_diameter().value(),      35.0); // df = m(z − 2.5)
-assert_eq!(gear.addendum().value(),    2.0);          // ha = m
-assert_eq!(gear.dedendum().value(),    2.5);          // hf = 1.25m
-assert_eq!(gear.tooth_depth().value(), 4.5);          // h  = 2.25m
-
-let pinion = Gear::builder().module(Module::Specified(2.0)).teeth(20).build()?;
-let wheel  = Gear::builder().module(Module::Specified(2.0)).teeth(40).build()?;
-
-assert!(pinion.can_mesh_with(&wheel));
-assert_eq!(pinion.center_distance_to(&wheel).value(), 60.0);
-assert_eq!(pinion.gear_ratio_to(&wheel), 2.0);
-```
-
-### Helical gear
-
-```rust
-use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-
-// Opposite hands required for parallel-shaft meshing
-let driver = HelicalGear::builder()
-    .module(Module::Specified(2.0))
-    .teeth(20)
-    .helix_angle(20.0)
-    .helix_hand(HelixHand::Right)
-    .face_width(30.0)
-    .build()?;
-
-let driven = HelicalGear::builder()
-    .module(Module::Specified(2.0))
-    .teeth(40)
-    .helix_angle(20.0)
-    .helix_hand(HelixHand::Left)
-    .face_width(30.0)
-    .build()?;
-
-let ea = driver.transverse_contact_ratio_with(&driven);
-let eg = driver.total_contact_ratio_with(&driven).unwrap(); // εα + εβ
-assert!(eg.value() > ea.value());
-```
-
-### Gear scene (multi-stage simulation)
+## Usage
 
 ```rust
 use for_the_love_of_gears::{gear::Gear, module::Module, scene::{AnyGear, GearScene}};
 
-// Two-stage spur reduction: 20t→40t (2:1) then 20t→60t (3:1) = 6:1 total
+// A 2:1 spur reduction
+let pinion = Gear::builder().module(Module::Specified(2.0)).teeth(20).build()?;
+let wheel  = Gear::builder().module(Module::Specified(2.0)).teeth(40).build()?;
+
+println!("pitch diameter:  {} mm",  pinion.reference_diameter().value()); // 40 mm
+println!("centre distance: {} mm",  pinion.center_distance_to(&wheel).value()); // 60 mm
+println!("contact ratio:   {:.3}",  pinion.contact_ratio_with(&wheel).value()); // 1.635
+
+// Simulate a two-stage 6:1 compound train
 let scene = GearScene::builder()
-    .shaft("input",        vec![("a", AnyGear::from(Gear::builder().module(Module::Specified(2.0)).teeth(20).build()?))])
+    .shaft("input",        vec![("a", AnyGear::from(pinion))])
     .shaft("intermediate", vec![
-        ("b", AnyGear::from(Gear::builder().module(Module::Specified(2.0)).teeth(40).build()?)),
+        ("b", AnyGear::from(wheel)),
         ("c", AnyGear::from(Gear::builder().module(Module::Specified(3.0)).teeth(20).build()?)),
     ])
-    .shaft("output",       vec![("d", AnyGear::from(Gear::builder().module(Module::Specified(3.0)).teeth(60).build()?))])
-    .mesh("a", "b")
-    .mesh("c", "d")
+    .shaft("output", vec![("d", AnyGear::from(
+        Gear::builder().module(Module::Specified(3.0)).teeth(60).build()?
+    ))])
+    .mesh("a", "b").mesh("c", "d")
     .driver("input")
     .build()?;
 
-let sim = scene.run(1200.0, 10.0)?; // 1200 rpm driver, 10 seconds
-
-assert!((sim.rpm("output")       - 200.0).abs() < 1e-9); // 1200 / 6
-assert!((sim.ratio_to("output")  - 6.0).abs()   < 1e-9);
-assert!((sim.total_rotations("output") - 200.0 * 10.0 / 60.0).abs() < 1e-9);
+let sim = scene.run(1200.0, 10.0)?;
+println!("output: {:.0} rpm", sim.rpm("output")); // 200 rpm
 ```
-
----
 
 ## License
 
