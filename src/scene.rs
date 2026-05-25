@@ -496,6 +496,8 @@ struct ShaftData {
 pub struct GearScene {
     driver_shaft: String,
     states: HashMap<String, ShaftState>,
+    shafts: HashMap<String, Vec<(String, AnyGear)>>,
+    meshes: Vec<(String, String)>,
 }
 
 impl GearScene {
@@ -556,6 +558,31 @@ impl GearScene {
     /// the builder, making it safe to iterate and display results predictably.
     pub fn shaft_names(&self) -> Vec<&str> {
         sorted_keys(&self.states)
+    }
+
+    /// The gears mounted on `shaft`, in the order they were added.
+    ///
+    /// Returns `None` if `shaft` does not exist in the scene.
+    /// Each element is a `(gear_name, gear)` pair.
+    pub fn gears_on_shaft(&self, shaft: &str) -> Option<&[(String, AnyGear)]> {
+        self.shafts.get(shaft).map(|v| v.as_slice())
+    }
+
+    /// Look up a single gear by name, returning a reference to it.
+    ///
+    /// Returns `None` if no gear with that name exists in the scene.
+    pub fn gear(&self, gear_name: &str) -> Option<&AnyGear> {
+        for gears in self.shafts.values() {
+            if let Some((_, g)) = gears.iter().find(|(n, _)| n == gear_name) {
+                return Some(g);
+            }
+        }
+        None
+    }
+
+    /// All mesh pairs in the scene, as `(gear_a_name, gear_b_name)` tuples.
+    pub fn meshes(&self) -> &[(String, String)] {
+        &self.meshes
     }
 }
 
@@ -784,7 +811,17 @@ impl GearSceneBuilder {
             }
         }
 
-        Ok(GearScene { driver_shaft, states })
+        let shafts_data: HashMap<String, Vec<(String, AnyGear)>> = shafts
+            .into_iter()
+            .map(|(name, sd)| (name, sd.gears))
+            .collect();
+
+        Ok(GearScene {
+            driver_shaft,
+            states,
+            shafts: shafts_data,
+            meshes: self.meshes,
+        })
     }
 }
 
