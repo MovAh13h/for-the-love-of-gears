@@ -375,6 +375,18 @@ fn total_contact_ratio_greater_than_transverse() {
 // --- Backlash ---
 
 #[test]
+#[should_panic(expected = "backlash must be non-negative")]
+fn thinned_tooth_thickness_panics_on_negative_backlash() {
+    gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01);
+}
+
+#[test]
+#[should_panic(expected = "backlash must be non-negative")]
+fn normal_backlash_panics_on_negative_backlash() {
+    gear_mn2_z20_psi20_right().normal_backlash(-0.01);
+}
+
+#[test]
 fn thinned_tooth_thickness() {
     let g = gear_mn2_z20_psi20_right();
     let s = g.thinned_tooth_thickness(0.08);

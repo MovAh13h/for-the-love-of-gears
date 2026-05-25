@@ -190,6 +190,18 @@ fn gear_ratio_increase() {
 // --- Backlash ---
 
 #[test]
+#[should_panic(expected = "backlash must be non-negative")]
+fn thinned_tooth_thickness_panics_on_negative_backlash() {
+    gear_m2_z20().thinned_tooth_thickness(-0.01);
+}
+
+#[test]
+#[should_panic(expected = "backlash must be non-negative")]
+fn normal_backlash_panics_on_negative_backlash() {
+    gear_m2_z20().normal_backlash(-0.01);
+}
+
+#[test]
 fn thinned_tooth_thickness() {
     let g = gear_m2_z20();
     let s = g.thinned_tooth_thickness(0.08);

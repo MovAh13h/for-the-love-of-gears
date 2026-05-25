@@ -285,6 +285,7 @@ impl Gear {
     /// assert!((s - (PI - 0.04)).abs() < 1e-10);
     /// ```
     pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
         PI * self.module / 2.0 - backlash_mm / 2.0
     }
 
@@ -302,6 +303,7 @@ impl Gear {
     /// assert!((jn - expected).abs() < 1e-10);
     /// ```
     pub fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
         backlash_mm * self.pressure_angle.to_radians().cos()
     }
 }

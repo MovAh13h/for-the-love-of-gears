@@ -527,6 +527,7 @@ impl HelicalGear {
     /// assert!((s - expected).abs() < 1e-10);
     /// ```
     pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
         PI * self.module / 2.0 - backlash_mm / 2.0 * self.helix_angle.to_radians().cos()
     }
 
@@ -544,6 +545,7 @@ impl HelicalGear {
     /// assert!(g.normal_backlash(0.08) < 0.08);
     /// ```
     pub fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
         backlash_mm
             * self.transverse_pressure_angle().to_radians().cos()
             * self.helix_angle.to_radians().cos()
