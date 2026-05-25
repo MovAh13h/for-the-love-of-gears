@@ -127,11 +127,6 @@ use std::{
 
 use crate::{gear::Gear, helical::HelicalGear, traits::GearGeometry};
 
-fn sorted_keys<V>(map: &HashMap<String, V>) -> Vec<&str> {
-    let mut names: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
-    names.sort();
-    names
-}
 
 #[derive(Debug, Clone, Copy)]
 struct ShaftState {
@@ -495,6 +490,7 @@ pub struct GearScene {
     states: HashMap<String, ShaftState>,
     shafts: HashMap<String, Vec<(String, AnyGear)>>,
     meshes: Vec<(String, String)>,
+    shaft_order: Vec<String>,
 }
 
 impl GearScene {
@@ -558,7 +554,7 @@ impl GearScene {
     /// The sorted order is stable regardless of the order shafts were added to
     /// the builder, making it safe to iterate and display results predictably.
     pub fn shaft_names(&self) -> Vec<&str> {
-        sorted_keys(&self.states)
+        self.shaft_order.iter().map(|s| s.as_str()).collect()
     }
 
     /// The gears mounted on `shaft`, in the order they were added.
@@ -602,7 +598,7 @@ impl GearScene {
     ///
     /// Returns `None` if `shaft` is not a known shaft name.
     pub fn shaft_index(&self, shaft: &str) -> Option<usize> {
-        self.shaft_names().iter().position(|&s| s == shaft)
+        self.shaft_order.iter().position(|s| s == shaft)
     }
 
     /// All mesh pairs in the scene, as `(gear_a_name, gear_b_name)` tuples.
@@ -870,11 +866,15 @@ impl GearSceneBuilder {
             .map(|(name, sd)| (name, sd.gears))
             .collect();
 
+        let mut shaft_order: Vec<String> = states.keys().cloned().collect();
+        shaft_order.sort();
+
         Ok(GearScene {
             driver_shaft,
             states,
             shafts: shafts_data,
             meshes: self.meshes,
+            shaft_order,
         })
     }
 }
@@ -1024,7 +1024,7 @@ impl GearSimulation {
     /// Mirrors [`GearScene::shaft_names`] so callers don't need to keep the
     /// scene around just to enumerate shafts.
     pub fn shaft_names(&self) -> Vec<&str> {
-        sorted_keys(&self.states)
+        self.shaft_order.iter().map(|s| s.as_str()).collect()
     }
 
     /// Index of `shaft` in the sorted shaft order used by [`SimFrame::shaft_angles`].
