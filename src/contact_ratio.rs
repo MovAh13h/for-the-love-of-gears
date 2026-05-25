@@ -16,8 +16,12 @@
 
 use std::f64::consts::PI;
 
-/// Transverse contact ratio for a spur gear pair.
-pub(crate) fn spur(
+/// Transverse contact ratio for a gear pair.
+///
+/// Works for both spur and helical gears — pass the transverse module and
+/// transverse pressure angle. For spur gears these equal the normal module
+/// and pressure angle directly.
+pub(crate) fn transverse(
     tip_radius_1: f64,
     base_radius_1: f64,
     tip_radius_2: f64,
@@ -29,22 +33,6 @@ pub(crate) fn spur(
     let alpha = pressure_angle_deg.to_radians();
     let base_pitch = PI * module * alpha.cos();
     path_of_contact(tip_radius_1, base_radius_1, tip_radius_2, base_radius_2, center_distance, alpha)
-        / base_pitch
-}
-
-/// Transverse contact ratio for a helical gear pair (uses transverse module and pressure angle).
-pub(crate) fn helical_transverse(
-    tip_radius_1: f64,
-    base_radius_1: f64,
-    tip_radius_2: f64,
-    base_radius_2: f64,
-    center_distance: f64,
-    transverse_pressure_angle_deg: f64,
-    transverse_module: f64,
-) -> f64 {
-    let alpha_t = transverse_pressure_angle_deg.to_radians();
-    let base_pitch = PI * transverse_module * alpha_t.cos();
-    path_of_contact(tip_radius_1, base_radius_1, tip_radius_2, base_radius_2, center_distance, alpha_t)
         / base_pitch
 }
 

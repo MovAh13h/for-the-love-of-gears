@@ -478,7 +478,7 @@ impl Gear {
     /// assert!((g1.contact_ratio_with(&g2) - 1.635).abs() < 0.001);
     /// ```
     pub fn contact_ratio_with(&self, other: &Gear) -> f64 {
-        crate::contact_ratio::spur(
+        crate::contact_ratio::transverse(
             self.tip_diameter() / 2.0,
             self.base_diameter() / 2.0,
             other.tip_diameter() / 2.0,

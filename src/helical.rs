@@ -629,7 +629,7 @@ impl HelicalGear {
     ///
     /// [`total_contact_ratio_with`]: HelicalGear::total_contact_ratio_with
     pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> f64 {
-        crate::contact_ratio::helical_transverse(
+        crate::contact_ratio::transverse(
             self.tip_diameter() / 2.0,
             self.base_diameter() / 2.0,
             other.tip_diameter() / 2.0,
