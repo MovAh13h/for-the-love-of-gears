@@ -41,6 +41,7 @@ const DEFAULT_PRESSURE_ANGLE: f64 = 20.0;
 
 /// Errors returned by [`GearBuilder::build`].
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum GearError {
     /// `.module()` was not called.
     ModuleRequired,

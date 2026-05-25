@@ -56,6 +56,7 @@ const DEFAULT_NORMAL_PRESSURE_ANGLE: f64 = 20.0;
 
 /// Errors returned by [`HelicalGearBuilder::build`].
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum HelicalGearError {
     /// `.module()` was not called.
     ModuleRequired,

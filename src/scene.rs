@@ -162,6 +162,7 @@ impl Direction {
 
 /// Errors returned when building or running a [`GearScene`].
 #[derive(Debug, PartialEq)]
+#[non_exhaustive]
 pub enum GearSceneError {
     /// Two shafts were given the same name.
     DuplicateShaftName(String),
