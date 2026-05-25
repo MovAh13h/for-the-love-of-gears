@@ -42,22 +42,22 @@ fn main() {
     );
     println!("  {}", "─".repeat(60));
     for shaft in scene.shaft_names() {
-        let dir = match sim.direction(shaft) {
+        let dir = match sim.direction(shaft).unwrap() {
             Direction::Clockwise => "CW",
             Direction::CounterClockwise => "CCW",
         };
         println!(
             "  {:<14}  {:>10.3}  {:>5}  {:>12.3}  {:>11.1}°",
             shaft,
-            sim.rpm(shaft),
+            sim.rpm(shaft).unwrap(),
             dir,
-            sim.total_rotations(shaft),
-            sim.angle_deg(shaft, 1.15),
+            sim.total_rotations(shaft).unwrap(),
+            sim.angle_deg(shaft, 1.15).unwrap(),
         );
     }
 
     println!();
-    println!("  Overall ratio  {:.0}:1", sim.ratio_to("output"));
+    println!("  Overall ratio  {:.0}:1", sim.ratio_to("output").unwrap());
 
     // Contact ratio for each mesh
     let a = helical(2.0, 20, 15.0, HelixHand::Right, 25.0);

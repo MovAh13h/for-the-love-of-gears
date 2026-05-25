@@ -41,20 +41,20 @@ fn main() {
     );
     println!("  {}", "─".repeat(56));
     for shaft in scene.shaft_names() {
-        let dir = match sim.direction(shaft) {
+        let dir = match sim.direction(shaft).unwrap() {
             Direction::Clockwise => "CW",
             Direction::CounterClockwise => "CCW",
         };
         println!(
             "  {:<18}  {:>10.3}  {:>5}  {:>15.3}",
             shaft,
-            sim.rpm(shaft),
+            sim.rpm(shaft).unwrap(),
             dir,
-            sim.total_rotations(shaft)
+            sim.total_rotations(shaft).unwrap()
         );
     }
     println!();
-    println!("  Overall ratio  {:.0}:1", sim.ratio_to("D_output"));
+    println!("  Overall ratio  {:.0}:1", sim.ratio_to("D_output").unwrap());
 
     println!();
     println!("FRAMES  (10 fps, first 0.5 s)");

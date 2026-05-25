@@ -34,8 +34,8 @@
 //!     .unwrap();
 //!
 //! let sim = scene.run(1000.0, 10.0).unwrap(); // 1000 rpm, 10 seconds
-//! assert_eq!(sim.rpm("output"), 500.0);        // 2:1 reduction
-//! assert_eq!(sim.ratio_to("output"), 2.0);
+//! assert_eq!(sim.rpm("output"), Some(500.0));  // 2:1 reduction
+//! assert_eq!(sim.ratio_to("output"), Some(2.0));
 //! ```
 //!
 //! # Compound gear trains
@@ -68,8 +68,8 @@
 //!     .unwrap();
 //!
 //! let sim = scene.run(1000.0, 60.0).unwrap();
-//! assert!((sim.rpm("output") - 1000.0 / 6.0).abs() < 1e-9);
-//! assert!((sim.ratio_to("output") - 6.0).abs() < 1e-9);
+//! assert!((sim.rpm("output").unwrap() - 1000.0 / 6.0).abs() < 1e-9);
+//! assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 //! ```
 
 use std::{
@@ -505,42 +505,41 @@ pub struct GearSimulation {
 }
 
 impl GearSimulation {
-    /// RPM of the named shaft.
-    ///
-    /// Returns `0.0` if the shaft name is not found (should not happen for
-    /// scenes built with [`GearSceneBuilder`]).
-    pub fn rpm(&self, shaft: &str) -> f64 {
-        self.shaft_rpms.get(shaft).copied().unwrap_or(0.0)
+    /// RPM of the named shaft, or `None` if the shaft name does not exist.
+    pub fn rpm(&self, shaft: &str) -> Option<f64> {
+        self.shaft_rpms.get(shaft).copied()
     }
 
-    /// Rotation direction of the named shaft relative to the driver.
-    pub fn direction(&self, shaft: &str) -> Direction {
-        self.shaft_directions
-            .get(shaft)
-            .copied()
-            .unwrap_or(Direction::Clockwise)
+    /// Rotation direction of the named shaft relative to the driver,
+    /// or `None` if the shaft name does not exist.
+    pub fn direction(&self, shaft: &str) -> Option<Direction> {
+        self.shaft_directions.get(shaft).copied()
     }
 
-    /// Total number of complete and partial rotations over the simulation duration.
+    /// Total number of complete and partial rotations over the simulation duration,
+    /// or `None` if the shaft name does not exist.
     ///
     /// `total_rotations = rpm × duration_secs / 60`
-    pub fn total_rotations(&self, shaft: &str) -> f64 {
-        self.rpm(shaft) * self.duration_secs / 60.0
+    pub fn total_rotations(&self, shaft: &str) -> Option<f64> {
+        self.rpm(shaft).map(|r| r * self.duration_secs / 60.0)
     }
 
-    /// Angular position of the shaft at time `t` seconds, in degrees `[0, 360)`.
+    /// Angular position of the shaft at time `t` seconds, in degrees `[0, 360)`,
+    /// or `None` if the shaft name does not exist.
     ///
     /// `t = 0` gives `0°`. The angle wraps at 360°.
-    pub fn angle_deg(&self, shaft: &str, t: f64) -> f64 {
-        (self.rpm(shaft) / 60.0 * t * 360.0).rem_euclid(360.0)
+    pub fn angle_deg(&self, shaft: &str, t: f64) -> Option<f64> {
+        self.rpm(shaft)
+            .map(|r| (r / 60.0 * t * 360.0).rem_euclid(360.0))
     }
 
-    /// Speed ratio from the driver to the named shaft: `driver_rpm / shaft_rpm`.
+    /// Speed ratio from the driver to the named shaft: `driver_rpm / shaft_rpm`,
+    /// or `None` if the shaft name does not exist.
     ///
     /// A value greater than `1.0` means the shaft is slower (speed reduction).
     /// A value less than `1.0` means the shaft is faster (speed increase).
-    pub fn ratio_to(&self, shaft: &str) -> f64 {
-        self.driver_rpm / self.rpm(shaft)
+    pub fn ratio_to(&self, shaft: &str) -> Option<f64> {
+        self.rpm(shaft).map(|r| self.driver_rpm / r)
     }
 
     /// Generate animation frames at `fps` frames per second.
@@ -555,8 +554,8 @@ impl GearSimulation {
                 let t = (i as f64 / fps).min(self.duration_secs);
                 let shaft_angles = self
                     .shaft_rpms
-                    .keys()
-                    .map(|s| (s.clone(), self.angle_deg(s, t)))
+                    .iter()
+                    .map(|(s, &rpm)| (s.clone(), (rpm / 60.0 * t * 360.0).rem_euclid(360.0)))
                     .collect();
                 SimFrame {
                     time_secs: t,

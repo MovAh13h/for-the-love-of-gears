@@ -489,7 +489,7 @@ proptest! {
             .unwrap();
         let sim = scene.run(100.0, 1.0).unwrap();
         let expected = z2 as f64 / z1 as f64;
-        prop_assert!((sim.ratio_to("driven") - expected).abs() < 1e-9);
+        prop_assert!((sim.ratio_to("driven").unwrap() - expected).abs() < 1e-9);
     }
 
     #[test]
@@ -511,7 +511,7 @@ proptest! {
         let sim1 = scene.run(rpm, 1.0).unwrap();
         let sim2 = scene.run(rpm * 2.0, 1.0).unwrap();
         // Doubling driver RPM doubles driven RPM
-        prop_assert!((sim2.rpm("driven") - 2.0 * sim1.rpm("driven")).abs() < 1e-6);
+        prop_assert!((sim2.rpm("driven").unwrap() - 2.0 * sim1.rpm("driven").unwrap()).abs() < 1e-6);
     }
 
     // --- Backlash ---

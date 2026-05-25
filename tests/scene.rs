@@ -40,8 +40,8 @@ fn two_gear_pair_rpm() {
         .unwrap();
 
     let sim = scene.run(1000.0, 10.0).unwrap();
-    assert!((sim.rpm("input") - 1000.0).abs() < 1e-9);
-    assert!((sim.rpm("output") - 500.0).abs() < 1e-9);
+    assert!((sim.rpm("input").unwrap() - 1000.0).abs() < 1e-9);
+    assert!((sim.rpm("output").unwrap() - 500.0).abs() < 1e-9);
 }
 
 #[test]
@@ -55,8 +55,8 @@ fn two_gear_pair_ratio() {
         .unwrap();
 
     let sim = scene.run(1000.0, 10.0).unwrap();
-    assert!((sim.ratio_to("output") - 2.0).abs() < 1e-9);
-    assert!((sim.ratio_to("input") - 1.0).abs() < 1e-9);
+    assert!((sim.ratio_to("output").unwrap() - 2.0).abs() < 1e-9);
+    assert!((sim.ratio_to("input").unwrap() - 1.0).abs() < 1e-9);
 }
 
 #[test]
@@ -70,8 +70,8 @@ fn two_gear_pair_directions() {
         .unwrap();
 
     let sim = scene.run(1000.0, 10.0).unwrap();
-    assert_eq!(sim.direction("input"), Direction::Clockwise);
-    assert_eq!(sim.direction("output"), Direction::CounterClockwise);
+    assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
+    assert_eq!(sim.direction("output"), Some(Direction::CounterClockwise));
 }
 
 // ── Speed-up pair (fewer teeth on driven) ────────────────────────────────────
@@ -87,8 +87,8 @@ fn speed_up_pair() {
         .unwrap();
 
     let sim = scene.run(500.0, 1.0).unwrap();
-    assert!((sim.rpm("output") - 1000.0).abs() < 1e-9);
-    assert!((sim.ratio_to("output") - 0.5).abs() < 1e-9);
+    assert!((sim.rpm("output").unwrap() - 1000.0).abs() < 1e-9);
+    assert!((sim.ratio_to("output").unwrap() - 0.5).abs() < 1e-9);
 }
 
 // ── Compound gear train (three shafts, 6:1 total) ────────────────────────────
@@ -110,8 +110,8 @@ fn compound_train_rpm() {
         .unwrap();
 
     let sim = scene.run(1200.0, 60.0).unwrap();
-    assert!((sim.rpm("output") - 200.0).abs() < 1e-9);
-    assert!((sim.ratio_to("output") - 6.0).abs() < 1e-9);
+    assert!((sim.rpm("output").unwrap() - 200.0).abs() < 1e-9);
+    assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 }
 
 #[test]
@@ -132,9 +132,9 @@ fn compound_train_directions() {
     let sim = scene.run(1200.0, 60.0).unwrap();
     // input → intermediate: direction flips (CW → CCW)
     // intermediate → output: direction flips again (CCW → CW)
-    assert_eq!(sim.direction("input"), Direction::Clockwise);
-    assert_eq!(sim.direction("intermediate"), Direction::CounterClockwise);
-    assert_eq!(sim.direction("output"), Direction::Clockwise);
+    assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
+    assert_eq!(sim.direction("intermediate"), Some(Direction::CounterClockwise));
+    assert_eq!(sim.direction("output"), Some(Direction::Clockwise));
 }
 
 // ── Kinematics ────────────────────────────────────────────────────────────────
@@ -150,8 +150,8 @@ fn total_rotations() {
         .unwrap();
 
     let sim = scene.run(60.0, 60.0).unwrap(); // 60 rpm for 60 s = 60 rotations
-    assert!((sim.total_rotations("input") - 60.0).abs() < 1e-9);
-    assert!((sim.total_rotations("output") - 30.0).abs() < 1e-9);
+    assert!((sim.total_rotations("input").unwrap() - 60.0).abs() < 1e-9);
+    assert!((sim.total_rotations("output").unwrap() - 30.0).abs() < 1e-9);
 }
 
 #[test]
@@ -165,8 +165,8 @@ fn angle_at_t_zero_is_zero() {
         .unwrap();
 
     let sim = scene.run(1000.0, 10.0).unwrap();
-    assert!((sim.angle_deg("input", 0.0)).abs() < 1e-9);
-    assert!((sim.angle_deg("output", 0.0)).abs() < 1e-9);
+    assert!((sim.angle_deg("input", 0.0).unwrap()).abs() < 1e-9);
+    assert!((sim.angle_deg("output", 0.0).unwrap()).abs() < 1e-9);
 }
 
 #[test]
@@ -182,9 +182,9 @@ fn angle_wraps_at_360() {
 
     let sim = scene.run(60.0, 100.0).unwrap();
     // At t = 1s the input has made exactly one full revolution → 0°
-    assert!(sim.angle_deg("input", 1.0).abs() < 1e-9);
+    assert!(sim.angle_deg("input", 1.0).unwrap().abs() < 1e-9);
     // At t = 0.5s input is at 180°
-    assert!((sim.angle_deg("input", 0.5) - 180.0).abs() < 1e-9);
+    assert!((sim.angle_deg("input", 0.5).unwrap() - 180.0).abs() < 1e-9);
 }
 
 // ── Animation frames ──────────────────────────────────────────────────────────
@@ -286,7 +286,7 @@ fn helical_pair_rpm() {
         .unwrap();
 
     let sim = scene.run(1000.0, 5.0).unwrap();
-    assert!((sim.rpm("output") - 500.0).abs() < 1e-9);
+    assert!((sim.rpm("output").unwrap() - 500.0).abs() < 1e-9);
 }
 
 // ── Error cases ───────────────────────────────────────────────────────────────
@@ -489,10 +489,10 @@ fn scene_reuse_at_different_speeds() {
     let sim1 = scene.run(1000.0, 1.0).unwrap();
     let sim2 = scene.run(500.0, 1.0).unwrap();
 
-    assert!((sim1.rpm("output") - 500.0).abs() < 1e-9);
-    assert!((sim2.rpm("output") - 250.0).abs() < 1e-9);
+    assert!((sim1.rpm("output").unwrap() - 500.0).abs() < 1e-9);
+    assert!((sim2.rpm("output").unwrap() - 250.0).abs() < 1e-9);
     // Ratio is independent of speed
-    assert!((sim1.ratio_to("output") - sim2.ratio_to("output")).abs() < 1e-9);
+    assert!((sim1.ratio_to("output").unwrap() - sim2.ratio_to("output").unwrap()).abs() < 1e-9);
 }
 
 // ── Over-constrained shaft ────────────────────────────────────────────────────
@@ -539,8 +539,8 @@ fn helical_pair_directions() {
         .unwrap();
 
     let sim = scene.run(600.0, 5.0).unwrap();
-    assert_eq!(sim.direction("input"), Direction::Clockwise);
-    assert_eq!(sim.direction("output"), Direction::CounterClockwise);
+    assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
+    assert_eq!(sim.direction("output"), Some(Direction::CounterClockwise));
 }
 
 #[test]
@@ -560,7 +560,7 @@ fn helical_pair_ratio() {
         .unwrap();
 
     let sim = scene.run(1000.0, 5.0).unwrap();
-    assert!((sim.ratio_to("output") - 2.0).abs() < 1e-9);
+    assert!((sim.ratio_to("output").unwrap() - 2.0).abs() < 1e-9);
 }
 
 #[test]
@@ -589,8 +589,8 @@ fn helical_compound_train() {
         .unwrap();
 
     let sim = scene.run(1200.0, 10.0).unwrap();
-    assert!((sim.rpm("output") - 200.0).abs() < 1e-9);
-    assert!((sim.ratio_to("output") - 6.0).abs() < 1e-9);
+    assert!((sim.rpm("output").unwrap() - 200.0).abs() < 1e-9);
+    assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 }
 
 // ── AnyGear accessors ─────────────────────────────────────────────────────────
