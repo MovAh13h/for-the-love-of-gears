@@ -1,18 +1,73 @@
 //! Gear scene — compose shafts, mount gears, and simulate kinematics.
 //!
-//! # Concepts
+//! # Core concepts
 //!
-//! A **shaft** holds one or more gears and defines an axis of rotation. All
-//! gears on the same shaft turn at the same angular velocity — this is the
-//! mechanism behind compound gear trains. A **mesh** is a connection between
-//! one gear on one shaft and one gear on another; it is how motion and power
-//! transfer between shafts.
+//! ## Shafts, gears, and meshes
 //!
-//! The **driver** shaft is the one with an external power input. Its RPM is
-//! specified when running the simulation; every other shaft's RPM is derived
-//! from it by following the mesh connections and applying gear ratios.
+//! A **shaft** is a rigid rotating axis. All gears mounted on the same shaft
+//! are keyed to it and turn at exactly the same angular velocity — this
+//! constraint is what makes compound gear trains possible.
 //!
-//! # Building a scene
+//! A **mesh** is a physical contact between one gear on one shaft and one gear
+//! on a different shaft. Each mesh transfers motion and multiplies (or divides)
+//! speed by the ratio of the two tooth counts.
+//!
+//! The **driver** shaft is the one receiving external power. Its speed is
+//! specified at simulation time; every other shaft's speed is derived
+//! automatically by following the mesh graph.
+//!
+//! ## How speed propagates — BFS over the mesh graph
+//!
+//! At build time, `GearSceneBuilder::build` performs a **breadth-first search**
+//! starting at the driver shaft. For each mesh edge it visits:
+//!
+//! ```text
+//! rpm_neighbor = rpm_current × (teeth_current / teeth_neighbor)
+//! direction_neighbor = direction_current.flip()
+//! ```
+//!
+//! The driver is assigned a normalised relative RPM of `1.0` and direction
+//! `Clockwise`. All other shafts are expressed as multiples of the driver.
+//! When `run(driver_rpm)` is called, every shaft's absolute RPM is obtained by
+//! a simple multiplication — the topology work is done once, not every call.
+//!
+//! ## Compound gear trains
+//!
+//! A **compound shaft** (two gears on the same shaft) multiplies the reduction
+//! ratios of adjacent stages:
+//!
+//! ```text
+//! Stage 1: shaft_A (20t) → shaft_B (40t)   ratio = 40/20 = 2:1
+//! Stage 2: shaft_B (20t) → shaft_C (60t)   ratio = 60/20 = 3:1
+//! Overall:                                   total = 2 × 3 = 6:1
+//! ```
+//!
+//! Both gears on shaft_B rotate together. The small gear on B drives the large
+//! gear on C — its speed is already 1/2 the input, and the second stage
+//! reduces it by another factor of 3.
+//!
+//! ## What the simulation computes
+//!
+//! [`GearSimulation`] answers purely **kinematic** questions — speed, angle,
+//! direction, and time. It does not model forces, torques, stresses, lubrication,
+//! or bearing loads. For those you need a separate mechanical analysis.
+//!
+//! Angular position at time `t` is exact — it is computed from the constant
+//! RPM, not by numerical integration:
+//!
+//! ```text
+//! angle_deg(t) = (rpm / 60 × t × 360°)  mod  360°
+//! ```
+//!
+//! ## Direction convention
+//!
+//! The driver shaft is defined as [`Direction::Clockwise`]. Each mesh reverses
+//! direction: the driven shaft in a single-stage pair is `CounterClockwise`.
+//! In a two-stage compound train, the output is `Clockwise` again (two
+//! reversals cancel). This matches real gear trains viewed from a fixed
+//! vantage point along the shaft axis.
+//!
+//! # Quick start — simple pair
 //!
 //! ```
 //! use for_the_love_of_gears::{
@@ -20,7 +75,6 @@
 //!     scene::{AnyGear, GearScene},
 //! };
 //!
-//! // Two-gear pair: 20-tooth driver → 40-tooth driven (2:1 reduction)
 //! let driver_gear = Gear::builder().module(2.0).teeth(20).build().unwrap();
 //! let driven_gear = Gear::builder().module(2.0).teeth(40).build().unwrap();
 //!
@@ -32,15 +86,12 @@
 //!     .build()
 //!     .unwrap();
 //!
-//! let sim = scene.run(1000.0).unwrap(); // 1000 rpm
+//! let sim = scene.run(1000.0).unwrap(); // 1000 rpm input
 //! assert_eq!(sim.rpm("output"), Some(500.0));  // 2:1 reduction
 //! assert_eq!(sim.ratio_to("output"), Some(2.0));
 //! ```
 //!
-//! # Compound gear trains
-//!
-//! Mount two gears on the same shaft to build a multi-stage reduction. Both
-//! gears rotate together — the ratio multiplies across stages.
+//! # Quick start — compound train
 //!
 //! ```
 //! use for_the_love_of_gears::{
@@ -88,9 +139,32 @@ struct ShaftState {
     direction: Direction,
 }
 
-/// A gear that can be mounted in a [`GearScene`] — either spur or helical.
+/// A type-erased gear that can be mounted in a [`GearScene`] — either spur or helical.
 ///
-/// Use [`AnyGear::from`] to convert a [`Gear`] or [`HelicalGear`] into this type.
+/// [`GearScene`] needs to store gears of any type in a single collection.
+/// `AnyGear` is the common container. Convert a concrete gear with
+/// [`AnyGear::from`]:
+///
+/// ```
+/// use for_the_love_of_gears::{
+///     gear::Gear,
+///     helical::{HelicalGear, HelixHand},
+///     scene::AnyGear,
+/// };
+///
+/// let spur = Gear::builder().module(2.0).teeth(20).build().unwrap();
+/// let helical = HelicalGear::builder()
+///     .module(2.0).teeth(30).helix_angle(20.0).helix_hand(HelixHand::Right)
+///     .build().unwrap();
+///
+/// let a: AnyGear = AnyGear::from(spur);
+/// let b: AnyGear = AnyGear::from(helical);
+/// ```
+///
+/// For geometric queries on `AnyGear` use the [`GearGeometry`] trait, which
+/// is implemented for this type.
+///
+/// [`GearGeometry`]: crate::traits::GearGeometry
 #[derive(Debug, Clone)]
 pub enum AnyGear {
     /// A standard spur gear.
@@ -101,6 +175,9 @@ pub enum AnyGear {
 
 impl AnyGear {
     /// Number of teeth on this gear.
+    ///
+    /// Used by the scene builder to compute the mesh ratio between two shafts:
+    /// `rpm_b = rpm_a × (teeth_a / teeth_b)`.
     pub fn teeth(&self) -> u32 {
         match self {
             Self::Spur(g) => g.teeth(),
@@ -108,7 +185,12 @@ impl AnyGear {
         }
     }
 
-    /// Module in mm (normal module for helical gears).
+    /// Normal module in mm.
+    ///
+    /// For spur gears this is [`Gear::module`]; for helical gears it is
+    /// [`HelicalGear::normal_module`]. The scene builder uses the module
+    /// indirectly via `can_mesh_with` — two gears can only form a mesh if
+    /// their modules (and other parameters) match.
     pub fn module(&self) -> f64 {
         match self {
             Self::Spur(g) => g.module(),
@@ -230,16 +312,34 @@ impl GearGeometry for AnyGear {
     }
 }
 
-/// Rotation direction of a shaft, defined relative to the driver shaft (clockwise).
+/// Rotation direction of a shaft, defined relative to the driver shaft.
 ///
-/// Each external gear mesh reverses direction. In a simple two-gear pair the
-/// driven gear rotates opposite to the driver; in a compound three-shaft train
-/// the output is the same direction as the input.
+/// The driver shaft is defined as [`Clockwise`]. Every mesh edge flips the
+/// direction: the immediate driven shaft is `CounterClockwise`; the shaft
+/// after that is `Clockwise` again, and so on.
+///
+/// This matches real gear trains when viewed from a fixed vantage point along
+/// the shaft axes:
+///
+/// ```text
+/// input (CW) ──mesh──> intermediate (CCW) ──mesh──> output (CW)
+/// ```
+///
+/// The actual physical direction (which way "clockwise" is) depends on the
+/// viewing angle and mounting — the library treats the driver as the
+/// reference and tracks relative reversals.
+///
+/// [`Clockwise`]: Direction::Clockwise
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Direction {
-    /// Same rotation direction as the driver shaft.
+    /// Same rotation sense as the driver shaft.
+    ///
+    /// The driver itself, and every shaft reached via an even number of mesh
+    /// edges from the driver.
     Clockwise,
-    /// Opposite rotation direction to the driver shaft.
+    /// Opposite rotation sense to the driver shaft.
+    ///
+    /// Every shaft reached via an odd number of mesh edges from the driver.
     CounterClockwise,
 }
 
@@ -384,9 +484,14 @@ struct ShaftData {
 /// A validated gear scene: shafts with mounted gears and mesh connections between them.
 ///
 /// Build with [`GearScene::builder()`] and simulate with [`GearScene::run()`].
-/// The same scene can be run at different speeds without rebuilding.
 ///
-/// See the [module-level documentation](crate::scene) for examples.
+/// The scene is **immutable after build**: the topology is validated once and
+/// relative speeds are pre-computed. Calling `run` at different driver RPMs is
+/// cheap — it simply scales the pre-computed relative values. There is no
+/// need to rebuild the scene to change speed.
+///
+/// See the [module-level documentation](crate::scene) for full examples and
+/// an explanation of how speed propagates through the mesh graph.
 #[derive(Debug)]
 pub struct GearScene {
     driver_shaft: String,
@@ -399,16 +504,32 @@ impl GearScene {
         GearSceneBuilder::default()
     }
 
-    /// Run the scene at `driver_rpm`.
+    /// Run the scene at `driver_rpm` revolutions per minute.
     ///
     /// Returns a [`GearSimulation`] from which you can query RPM, direction,
     /// angle, total rotations, and animation frames for any shaft.
     ///
-    /// The same scene can be run multiple times at different speeds.
+    /// Internally, each shaft's relative RPM (pre-computed at build time as a
+    /// multiple of the driver) is simply multiplied by `driver_rpm` — this is
+    /// an O(n) scale over the number of shafts, not another graph traversal.
+    ///
+    /// The same scene can be run at different speeds without rebuilding:
+    ///
+    /// ```
+    /// # use for_the_love_of_gears::{gear::Gear, scene::{AnyGear, GearScene}};
+    /// # let scene = GearScene::builder()
+    /// #     .shaft("input",  vec![("a", AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap()))])
+    /// #     .shaft("output", vec![("b", AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap()))])
+    /// #     .mesh("a", "b").driver("input").build().unwrap();
+    /// let slow = scene.run(500.0).unwrap();
+    /// let fast = scene.run(3000.0).unwrap();
+    /// assert_eq!(slow.rpm("output"),  Some(250.0));
+    /// assert_eq!(fast.rpm("output"),  Some(1500.0));
+    /// ```
     ///
     /// # Errors
     ///
-    /// - [`GearSceneError::DriverRpmMustBePositive`] if `driver_rpm <= 0`
+    /// Returns [`GearSceneError::DriverRpmMustBePositive`] if `driver_rpm <= 0`.
     pub fn run(&self, driver_rpm: f64) -> Result<GearSimulation, GearSceneError> {
         if driver_rpm <= 0.0 {
             return Err(GearSceneError::DriverRpmMustBePositive);
@@ -429,7 +550,10 @@ impl GearScene {
         })
     }
 
-    /// The names of all shafts in this scene, in sorted order.
+    /// The names of all shafts in this scene, in **sorted** (alphabetical) order.
+    ///
+    /// The sorted order is stable regardless of the order shafts were added to
+    /// the builder, making it safe to iterate and display results predictably.
     pub fn shaft_names(&self) -> Vec<&str> {
         sorted_keys(&self.states)
     }
@@ -437,7 +561,11 @@ impl GearScene {
 
 /// Builder for [`GearScene`].
 ///
-/// Obtain via [`GearScene::builder()`].
+/// Obtain via [`GearScene::builder()`]. The typical call sequence is:
+/// 1. Call `.shaft()` once per shaft (add gears at the same time)
+/// 2. Call `.mesh()` for every gear pair that physically contacts
+/// 3. Call `.driver()` to designate the power-input shaft
+/// 4. Call `.build()` to validate and produce a [`GearScene`]
 #[derive(Debug, Default)]
 pub struct GearSceneBuilder {
     shafts: Vec<(String, Vec<(String, AnyGear)>)>,
@@ -446,10 +574,37 @@ pub struct GearSceneBuilder {
 }
 
 impl GearSceneBuilder {
-    /// Add a named shaft with the listed gears.
+    /// Add a named shaft carrying the listed gears.
     ///
-    /// Each gear entry is `(gear_name, gear)`. Gear names must be unique across
-    /// the entire scene — no two gears on any shaft may share a name.
+    /// `name` is the shaft identifier used in `.driver()` and in simulation
+    /// queries. Each gear entry is `(gear_name, gear)` — the gear name is
+    /// used only in `.mesh()` calls.
+    ///
+    /// **Gear names are global** across the whole scene: no two gears on any
+    /// shaft may share a name, because mesh declarations reference gears by
+    /// name and ambiguous names would make the scene undefined.
+    ///
+    /// **Compound shafts**: passing more than one gear for a shaft creates a
+    /// compound shaft. All gears on the shaft rotate together. The small gear
+    /// on the compound shaft is driven by the preceding stage, and its large
+    /// partner drives the next stage, multiplying the overall reduction:
+    ///
+    /// ```
+    /// # use for_the_love_of_gears::{gear::Gear, scene::{AnyGear, GearScene}};
+    /// // Compound intermediate shaft: 40t receives input, 20t drives output.
+    /// GearScene::builder()
+    ///     .shaft("input",        vec![("a", AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap()))])
+    ///     .shaft("intermediate", vec![
+    ///         ("b", AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap())),
+    ///         ("c", AnyGear::from(Gear::builder().module(3.0).teeth(20).build().unwrap())),
+    ///     ])
+    ///     .shaft("output",       vec![("d", AnyGear::from(Gear::builder().module(3.0).teeth(60).build().unwrap()))])
+    ///     .mesh("a", "b")
+    ///     .mesh("c", "d")
+    ///     .driver("input")
+    ///     .build()
+    ///     .unwrap();
+    /// ```
     pub fn shaft<S: Into<String>>(mut self, name: &str, gears: Vec<(S, AnyGear)>) -> Self {
         self.shafts.push((
             name.to_string(),
@@ -458,19 +613,26 @@ impl GearSceneBuilder {
         self
     }
 
-    /// Declare that two gears (identified by name) mesh with each other.
+    /// Declare that two gears (identified by name) are in physical contact.
     ///
-    /// The gears must be on different shafts, have compatible modules, and
-    /// be compatible gear types (spur–spur or matching helical–helical).
+    /// Both gear names must have been registered via `.shaft()`. The two gears
+    /// must be on **different** shafts and must pass the compatibility check of
+    /// their underlying type (same module and pressure angle for spur gears;
+    /// same module, pressure angle, helix angle, and opposite helix hand for
+    /// helical gears). A spur gear and a helical gear cannot mesh.
+    ///
+    /// Mesh order does not matter — `.mesh("a", "b")` and `.mesh("b", "a")`
+    /// produce the same result.
     pub fn mesh(mut self, gear_a: &str, gear_b: &str) -> Self {
         self.meshes.push((gear_a.to_string(), gear_b.to_string()));
         self
     }
 
-    /// Designate which shaft is the driver (the one with the external input RPM).
+    /// Designate which shaft receives the external input power.
     ///
-    /// Every scene must have exactly one driver. Call [`GearScene::run`] to
-    /// specify the actual RPM at simulation time.
+    /// The driver shaft speed is specified when calling [`GearScene::run`].
+    /// Every other shaft's speed is derived from it. Exactly one driver shaft
+    /// is required — calling this method twice overwrites the previous choice.
     pub fn driver(mut self, shaft: &str) -> Self {
         self.driver_shaft = Some(shaft.to_string());
         self
@@ -478,9 +640,21 @@ impl GearSceneBuilder {
 
     /// Build and validate the [`GearScene`].
     ///
-    /// Validates names, mesh compatibility, and connectivity, then pre-computes
-    /// relative RPMs and directions for all shafts so that [`GearScene::run`]
-    /// is a simple scale operation.
+    /// # Validation steps
+    ///
+    /// 1. Check for duplicate shaft names and duplicate gear names.
+    /// 2. Verify the driver shaft name matches a declared shaft.
+    /// 3. For each mesh, verify both gears exist and are on different shafts,
+    ///    then call the appropriate `can_mesh_with` to check geometric
+    ///    compatibility.
+    /// 4. Run a **BFS** from the driver shaft, computing the relative RPM
+    ///    (`rpm_neighbor = rpm_current × teeth_current / teeth_neighbor`) and
+    ///    direction (`flip` at each mesh) for every reachable shaft.
+    /// 5. Detect disconnected shafts (never reached by BFS) and
+    ///    over-constrained shafts (reached via two paths with inconsistent RPMs).
+    ///
+    /// On success, the relative RPMs and directions are stored. [`GearScene::run`]
+    /// just multiplies them by the chosen driver RPM.
     pub fn build(self) -> Result<GearScene, GearSceneError> {
         let driver_shaft = self
             .driver_shaft
@@ -616,9 +790,16 @@ impl GearSceneBuilder {
 
 /// The kinematic result of running a [`GearScene`] at a given driver RPM.
 ///
-/// All queries are `O(1)` — RPM and direction are pre-computed at build time
-/// and scaled by the driver RPM at run time. Angular position at any time `t`
-/// is exact (no numerical integration).
+/// All queries are `O(1)` — RPM and direction are pre-computed at build time;
+/// `run(driver_rpm)` just scales them. Angular position at any time `t` is
+/// computed from the constant RPM directly, with no numerical integration:
+///
+/// ```text
+/// angle_deg(t) = (rpm / 60 × t × 360°)  mod  360°
+/// ```
+///
+/// All `shaft` parameters accept the names declared in [`GearSceneBuilder::shaft`].
+/// Methods return `None` rather than panicking when a shaft name is not found.
 #[derive(Debug)]
 pub struct GearSimulation {
     states: HashMap<String, ShaftState>,
@@ -627,56 +808,103 @@ pub struct GearSimulation {
 }
 
 impl GearSimulation {
-    /// RPM of the named shaft, or `None` if the shaft name does not exist.
+    /// Revolutions per minute of the named shaft.
+    ///
+    /// For the driver shaft this is the RPM passed to [`GearScene::run`]. For
+    /// all other shafts it is derived from the gear ratios along the mesh path:
+    ///
+    /// ```text
+    /// rpm_shaft = driver_rpm × ∏(teeth_driving / teeth_driven)  along the path
+    /// ```
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn rpm(&self, shaft: &str) -> Option<f64> {
         self.states.get(shaft).map(|s| s.rpm)
     }
 
-    /// Rotation direction of the named shaft relative to the driver,
-    /// or `None` if the shaft name does not exist.
+    /// Rotation direction of the named shaft relative to the driver.
+    ///
+    /// The driver is always [`Direction::Clockwise`]. Each mesh edge in the
+    /// path from the driver to this shaft flips the direction. See
+    /// [`Direction`] for the full convention.
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn direction(&self, shaft: &str) -> Option<Direction> {
         self.states.get(shaft).map(|s| s.direction)
     }
 
-    /// Total rotations over `duration_secs` seconds,
-    /// or `None` if the shaft name does not exist.
+    /// Total rotations completed over `duration_secs` seconds.
     ///
-    /// `total_rotations = rpm × duration_secs / 60`
+    /// Formula: `rotations = rpm × duration_secs / 60`.
+    ///
+    /// A shaft at 1 800 rpm completes `1800 × 5 / 60 = 150` full turns in 5 s.
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn total_rotations(&self, shaft: &str, duration_secs: f64) -> Option<f64> {
         self.rpm(shaft).map(|r| r * duration_secs / 60.0)
     }
 
-    /// Angular position of the shaft at time `t` seconds, in degrees `[0, 360)`,
-    /// or `None` if the shaft name does not exist.
+    /// Angular position of the shaft at time `t` seconds, in degrees `[0°, 360°)`.
     ///
-    /// `t = 0` gives `0°`. The angle wraps at 360°.
+    /// All shafts start at `0°` when `t = 0`. The angle advances linearly with
+    /// time and wraps using `rem_euclid` so the result is always in `[0, 360)`:
+    ///
+    /// ```text
+    /// angle = (rpm / 60 × t × 360°)  mod  360°
+    /// ```
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn angle_deg(&self, shaft: &str, t: f64) -> Option<f64> {
         self.rpm(shaft)
             .map(|r| (r / 60.0 * t * 360.0).rem_euclid(360.0))
     }
 
-    /// Angular velocity of the named shaft in radians per second,
-    /// or `None` if the shaft name does not exist.
+    /// Angular velocity of the named shaft in radians per second.
     ///
-    /// `ω = rpm × 2π / 60`
+    /// Formula: `ω = rpm × 2π / 60`.
+    ///
+    /// This is the SI unit angular velocity. Use it when interfacing with
+    /// physics engines or dynamics calculations that require rad/s.
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn angular_velocity_rad_s(&self, shaft: &str) -> Option<f64> {
         self.rpm(shaft).map(|r| r * std::f64::consts::TAU / 60.0)
     }
 
-    /// Speed ratio from the driver to the named shaft: `driver_rpm / shaft_rpm`,
-    /// or `None` if the shaft name does not exist.
+    /// Overall speed ratio from the driver to the named shaft:
+    /// `i = driver_rpm / shaft_rpm`.
     ///
-    /// A value greater than `1.0` means the shaft is slower (speed reduction).
-    /// A value less than `1.0` means the shaft is faster (speed increase).
+    /// | Value | Meaning |
+    /// |---|---|
+    /// | `> 1.0` | Speed reduction — shaft is slower than driver |
+    /// | `= 1.0` | Direct drive — shaft and driver turn at the same speed |
+    /// | `< 1.0` | Speed increase — shaft is faster than driver |
+    ///
+    /// For a 6:1 compound train the output shaft returns `6.0` regardless of
+    /// the actual driver RPM.
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
     pub fn ratio_to(&self, shaft: &str) -> Option<f64> {
         self.rpm(shaft).map(|r| self.driver_rpm / r)
     }
 
-    /// Generate animation frames at `fps` frames per second over `duration_secs` seconds.
+    /// Generate animation keyframes at `fps` frames per second over `duration_secs`.
     ///
-    /// Each frame contains the angular position (in degrees) of every shaft at
-    /// that instant. The first frame is at `t = 0`; the last is at
-    /// `duration_secs` or the nearest frame boundary.
+    /// Each [`SimFrame`] holds the angular position of every shaft at one
+    /// instant. The frames are useful for driving gear-train visualisations:
+    /// feed each frame's `shaft_angles` map to your renderer on each tick.
+    ///
+    /// Frame timestamps:
+    /// - First frame: `t = 0` (all shafts at 0°)
+    /// - Subsequent frames: `t = 1/fps, 2/fps, …`
+    /// - Last frame: exactly `duration_secs` (clamped, not extrapolated)
+    ///
+    /// Total frame count: `⌈duration_secs × fps⌉ + 1`.
+    ///
+    /// Shaft angles within each frame are stored in a [`BTreeMap`] so
+    /// iteration order is alphabetical and deterministic.
+    ///
+    /// [`BTreeMap`]: std::collections::BTreeMap
     pub fn frames(&self, fps: f64, duration_secs: f64) -> Vec<SimFrame> {
         let frame_count = (duration_secs * fps).ceil() as usize + 1;
         (0..frame_count)
@@ -694,7 +922,7 @@ impl GearSimulation {
             .collect()
     }
 
-    /// The names of all shafts in this simulation, in sorted order.
+    /// The names of all shafts in this simulation, in **sorted** order.
     ///
     /// Mirrors [`GearScene::shaft_names`] so callers don't need to keep the
     /// scene around just to enumerate shafts.
@@ -702,25 +930,34 @@ impl GearSimulation {
         sorted_keys(&self.states)
     }
 
-    /// The name of the driver shaft.
+    /// The name of the driver shaft for this simulation.
     pub fn driver_shaft(&self) -> &str {
         &self.driver_shaft
     }
 
     /// The driver RPM this simulation was run at.
+    ///
+    /// Equivalent to `sim.rpm(sim.driver_shaft())`.
     pub fn driver_rpm(&self) -> f64 {
         self.driver_rpm
     }
 }
 
-/// One animation frame: angular positions of all shafts at a single instant in time.
+/// One animation keyframe: angular positions of all shafts at a single instant.
 ///
-/// `shaft_angles` is a [`BTreeMap`] so shaft names are always in sorted order —
-/// iteration order is deterministic regardless of how shafts were declared.
+/// Produced by [`GearSimulation::frames`]. Feed `shaft_angles` to your renderer
+/// on each frame tick to animate a gear train.
+///
+/// `shaft_angles` uses [`BTreeMap`] so keys are always in alphabetical order —
+/// iteration is deterministic regardless of the order shafts were declared.
+///
+/// All angles are in degrees and wrapped to `[0°, 360°)`.
+///
+/// [`BTreeMap`]: std::collections::BTreeMap
 #[derive(Debug, Clone)]
 pub struct SimFrame {
-    /// Time of this frame in seconds from the start of the simulation.
+    /// Time of this frame in seconds from the start of the simulation (`t = 0`).
     pub time_secs: f64,
-    /// Angular position of each shaft in degrees `[0, 360)`, keyed by shaft name.
+    /// Angular position of each shaft in degrees `[0°, 360°)`, keyed by shaft name.
     pub shaft_angles: BTreeMap<String, f64>,
 }
