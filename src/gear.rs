@@ -557,6 +557,26 @@ impl Gear {
         }
         Ok(backlash_mm * self.pressure_angle.to_radians().cos())
     }
+
+    /// Returns `true` if this gear would be undercut when hobbed with a standard rack tool.
+    ///
+    /// Undercutting occurs when the tooth count is below the minimum for the
+    /// pressure angle: `z_min = 2 / sin²(α)`. For the standard 20° angle this
+    /// gives `z_min ≈ 17`. Undercut teeth are weaker (the root fillet encroaches
+    /// on the involute) and may cause interference with the mating gear.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::gear::Gear;
+    ///
+    /// let g16 = Gear::builder().module(2.0).teeth(16).build().unwrap();
+    /// let g20 = Gear::builder().module(2.0).teeth(20).build().unwrap();
+    /// assert!(g16.is_undercut());
+    /// assert!(!g20.is_undercut());
+    /// ```
+    pub fn is_undercut(&self) -> bool {
+        let sin_alpha = self.pressure_angle.to_radians().sin();
+        (self.teeth as f64) * sin_alpha * sin_alpha < 2.0
+    }
 }
 
 // ── GearGeometry trait impl ───────────────────────────────────────────────────

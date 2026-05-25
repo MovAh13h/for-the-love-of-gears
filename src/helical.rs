@@ -770,6 +770,34 @@ impl HelicalGear {
             * self.transverse_pressure_angle().to_radians().cos()
             * self.helix_angle.to_radians().cos())
     }
+
+    /// Returns `true` if this gear would be undercut when hobbed with a standard rack tool.
+    ///
+    /// For helical gears, undercutting is assessed on the **virtual (equivalent)
+    /// spur gear** in the normal plane. The virtual tooth count is
+    /// `z_v = z / cos³(ψ)` (Tregold's approximation). The gear undercuts if
+    /// `z_v · sin²(αn) < 2`, where `αn` is the normal pressure angle.
+    ///
+    /// Because the helix increases the virtual tooth count, a helical gear with
+    /// a given `z` undercuts at a lower threshold than an equivalent spur gear.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// // 14 teeth spur-equivalent would undercut, but helix saves it.
+    /// let g = HelicalGear::builder()
+    ///     .module(2.0).teeth(14)
+    ///     .helix_angle(30.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// assert!(!g.is_undercut()); // z_v = 14/cos³(30°) ≈ 24.2 > 17
+    /// ```
+    pub fn is_undercut(&self) -> bool {
+        let psi = self.helix_angle.to_radians();
+        let cos_psi = psi.cos();
+        let z_v = (self.teeth as f64) / (cos_psi * cos_psi * cos_psi);
+        let sin_alpha_n = self.normal_pressure_angle.to_radians().sin();
+        z_v * sin_alpha_n * sin_alpha_n < 2.0
+    }
 }
 
 // ── GearGeometry trait impl ───────────────────────────────────────────────────
