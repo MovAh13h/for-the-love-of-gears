@@ -889,9 +889,6 @@ impl HelicalGearBuilder {
         if module <= 0.0 {
             return Err(HelicalGearError::ModuleMustBePositive);
         }
-        if teeth == 0 {
-            return Err(HelicalGearError::TeethMustBePositive);
-        }
         if teeth < MIN_TEETH {
             return Err(HelicalGearError::TeethTooFew);
         }

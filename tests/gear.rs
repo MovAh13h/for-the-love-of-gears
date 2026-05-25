@@ -39,7 +39,7 @@ fn build_rejects_negative_module() {
 fn build_rejects_zero_teeth() {
     assert_eq!(
         Gear::builder().module(2.0).teeth(0).build(),
-        Err(GearError::TeethMustBePositive)
+        Err(GearError::TeethTooFew)
     );
 }
 

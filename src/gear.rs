@@ -663,9 +663,6 @@ impl GearBuilder {
         if module <= 0.0 {
             return Err(GearError::ModuleMustBePositive);
         }
-        if teeth == 0 {
-            return Err(GearError::TeethMustBePositive);
-        }
         if teeth < MIN_TEETH {
             return Err(GearError::TeethTooFew);
         }

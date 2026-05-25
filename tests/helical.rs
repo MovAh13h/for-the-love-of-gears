@@ -61,7 +61,7 @@ fn build_rejects_zero_teeth() {
     assert_eq!(
         HelicalGear::builder()
             .module(2.0).teeth(0).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
-        Err(HelicalGearError::TeethMustBePositive)
+        Err(HelicalGearError::TeethTooFew)
     );
 }
 

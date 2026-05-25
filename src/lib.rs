@@ -116,9 +116,6 @@ pub enum GearError {
     /// Module must be strictly greater than zero.
     ModuleMustBePositive,
 
-    /// Tooth count must be at least 1.
-    TeethMustBePositive,
-
     /// Tooth count must be at least [`MIN_TEETH`] (3).
     ///
     /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
@@ -147,7 +144,6 @@ impl fmt::Display for GearError {
             Self::HelixAngleRequired => write!(f, "helix angle is required"),
             Self::HelixHandRequired => write!(f, "helix hand is required"),
             Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
-            Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
             Self::TeethTooFew => write!(
                 f,
                 "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
