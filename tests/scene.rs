@@ -366,7 +366,7 @@ fn error_incompatible_mesh_different_module() {
 
     assert_eq!(
         result.unwrap_err(),
-        GearSceneError::IncompatibleMesh {
+        GearSceneError::MeshParameterMismatch {
             gear_a: "a".to_string(),
             gear_b: "b".to_string(),
         }
@@ -384,7 +384,7 @@ fn error_incompatible_mesh_spur_with_helical() {
 
     assert_eq!(
         result.unwrap_err(),
-        GearSceneError::IncompatibleMesh {
+        GearSceneError::MeshTypeMismatch {
             gear_a: "a".to_string(),
             gear_b: "b".to_string(),
         }

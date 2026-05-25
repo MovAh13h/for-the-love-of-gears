@@ -433,16 +433,28 @@ pub enum GearSceneError {
         gear_b: String,
     },
 
-    /// The two gears in a mesh have incompatible geometry (different module,
-    /// pressure angle, or gear type).
+    /// The two gears in a mesh are of different types (one spur, one helical).
+    ///
+    /// A spur gear and a helical gear have fundamentally different tooth
+    /// geometries and cannot be paired. Use two spur gears or two helical
+    /// gears with matching parameters and opposing helix hands.
+    MeshTypeMismatch {
+        /// Name of the first gear in the mesh.
+        gear_a: String,
+        /// Name of the second gear in the mesh.
+        gear_b: String,
+    },
+
+    /// The two gears in a mesh share the same type but have incompatible
+    /// parameters (different module, pressure angle, or — for helical gears —
+    /// helix angle or same helix hand).
     ///
     /// For a mesh to be physically valid, the two gears must pass
-    /// [`Gear::can_mesh_with`] or [`HelicalGear::can_mesh_with`]. A spur gear
-    /// cannot mesh with a helical gear.
+    /// [`Gear::can_mesh_with`] or [`HelicalGear::can_mesh_with`].
     ///
     /// [`Gear::can_mesh_with`]: crate::gear::Gear::can_mesh_with
     /// [`HelicalGear::can_mesh_with`]: crate::helical::HelicalGear::can_mesh_with
-    IncompatibleMesh {
+    MeshParameterMismatch {
         /// Name of the first gear in the mesh.
         gear_a: String,
         /// Name of the second gear in the mesh.
@@ -488,9 +500,13 @@ impl fmt::Display for GearSceneError {
             Self::MeshGearsOnSameShaft { gear_a, gear_b } => {
                 write!(f, "gears '{gear_a}' and '{gear_b}' are on the same shaft")
             }
-            Self::IncompatibleMesh { gear_a, gear_b } => write!(
+            Self::MeshTypeMismatch { gear_a, gear_b } => write!(
                 f,
-                "gears '{gear_a}' and '{gear_b}' cannot mesh — incompatible module or type"
+                "gears '{gear_a}' and '{gear_b}' cannot mesh — one is spur, the other helical"
+            ),
+            Self::MeshParameterMismatch { gear_a, gear_b } => write!(
+                f,
+                "gears '{gear_a}' and '{gear_b}' cannot mesh — incompatible module, pressure angle, or helix parameters"
             ),
             Self::DisconnectedShaft(s) => {
                 write!(
@@ -780,10 +796,21 @@ impl GearSceneBuilder {
                 .unwrap();
 
             if !g_a.can_mesh_with(g_b) {
-                return Err(GearSceneError::IncompatibleMesh {
-                    gear_a: gear_a.clone(),
-                    gear_b: gear_b.clone(),
-                });
+                let err = if matches!(
+                    (g_a, g_b),
+                    (AnyGear::Spur(_), AnyGear::Helical(_)) | (AnyGear::Helical(_), AnyGear::Spur(_))
+                ) {
+                    GearSceneError::MeshTypeMismatch {
+                        gear_a: gear_a.clone(),
+                        gear_b: gear_b.clone(),
+                    }
+                } else {
+                    GearSceneError::MeshParameterMismatch {
+                        gear_a: gear_a.clone(),
+                        gear_b: gear_b.clone(),
+                    }
+                };
+                return Err(err);
             }
 
             let ta = g_a.teeth() as f64;
