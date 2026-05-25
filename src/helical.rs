@@ -778,6 +778,13 @@ impl GearGeometry for HelicalGear {
         self.base_diameter()
     }
 
+    fn addendum(&self) -> f64 { self.addendum() }
+    fn dedendum(&self) -> f64 { self.dedendum() }
+    fn tooth_depth(&self) -> f64 { self.tooth_depth() }
+    fn clearance(&self) -> f64 { self.clearance() }
+    fn tooth_thickness(&self) -> f64 { self.tooth_thickness() }
+    fn diametral_pitch(&self) -> f64 { self.diametral_pitch() }
+
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         self.thinned_tooth_thickness(backlash_mm)
     }
