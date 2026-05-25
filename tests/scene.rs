@@ -1,24 +1,17 @@
 use for_the_love_of_gears::{
     gear::Gear,
     helical::{HelicalGear, HelixHand},
-    module::Module,
     scene::{AnyGear, Direction, GearScene, GearSceneError},
 };
 
 fn spur(module: f64, teeth: u32) -> AnyGear {
-    AnyGear::from(
-        Gear::builder()
-            .module(Module::Specified(module))
-            .teeth(teeth)
-            .build()
-            .unwrap(),
-    )
+    AnyGear::from(Gear::builder().module(module).teeth(teeth).build().unwrap())
 }
 
 fn helical(module: f64, teeth: u32, helix_deg: f64, hand: HelixHand) -> AnyGear {
     AnyGear::from(
         HelicalGear::builder()
-            .module(Module::Specified(module))
+            .module(module)
             .teeth(teeth)
             .helix_angle(helix_deg)
             .helix_hand(hand)
@@ -39,7 +32,7 @@ fn two_gear_pair_rpm() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 10.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert!((sim.rpm("input").unwrap() - 1000.0).abs() < 1e-9);
     assert!((sim.rpm("output").unwrap() - 500.0).abs() < 1e-9);
 }
@@ -54,7 +47,7 @@ fn two_gear_pair_ratio() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 10.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert!((sim.ratio_to("output").unwrap() - 2.0).abs() < 1e-9);
     assert!((sim.ratio_to("input").unwrap() - 1.0).abs() < 1e-9);
 }
@@ -69,12 +62,12 @@ fn two_gear_pair_directions() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 10.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
     assert_eq!(sim.direction("output"), Some(Direction::CounterClockwise));
 }
 
-// ── Speed-up pair (fewer teeth on driven) ────────────────────────────────────
+// ── Speed-up pair ─────────────────────────────────────────────────────────────
 
 #[test]
 fn speed_up_pair() {
@@ -86,22 +79,18 @@ fn speed_up_pair() {
         .build()
         .unwrap();
 
-    let sim = scene.run(500.0, 1.0).unwrap();
+    let sim = scene.run(500.0).unwrap();
     assert!((sim.rpm("output").unwrap() - 1000.0).abs() < 1e-9);
     assert!((sim.ratio_to("output").unwrap() - 0.5).abs() < 1e-9);
 }
 
-// ── Compound gear train (three shafts, 6:1 total) ────────────────────────────
+// ── Compound gear train ───────────────────────────────────────────────────────
 
 #[test]
 fn compound_train_rpm() {
-    // Stage 1: 20t → 40t (2:1). Stage 2: 20t → 60t (3:1). Total: 6:1.
     let scene = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft(
-            "intermediate",
-            vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))],
-        )
+        .shaft("intermediate", vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))])
         .shaft("output", vec![("d", spur(3.0, 60))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -109,7 +98,7 @@ fn compound_train_rpm() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1200.0, 60.0).unwrap();
+    let sim = scene.run(1200.0).unwrap();
     assert!((sim.rpm("output").unwrap() - 200.0).abs() < 1e-9);
     assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 }
@@ -118,10 +107,7 @@ fn compound_train_rpm() {
 fn compound_train_directions() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft(
-            "intermediate",
-            vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))],
-        )
+        .shaft("intermediate", vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))])
         .shaft("output", vec![("d", spur(3.0, 60))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -129,9 +115,7 @@ fn compound_train_directions() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1200.0, 60.0).unwrap();
-    // input → intermediate: direction flips (CW → CCW)
-    // intermediate → output: direction flips again (CCW → CW)
+    let sim = scene.run(1200.0).unwrap();
     assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
     assert_eq!(sim.direction("intermediate"), Some(Direction::CounterClockwise));
     assert_eq!(sim.direction("output"), Some(Direction::Clockwise));
@@ -149,9 +133,10 @@ fn total_rotations() {
         .build()
         .unwrap();
 
-    let sim = scene.run(60.0, 60.0).unwrap(); // 60 rpm for 60 s = 60 rotations
-    assert!((sim.total_rotations("input").unwrap() - 60.0).abs() < 1e-9);
-    assert!((sim.total_rotations("output").unwrap() - 30.0).abs() < 1e-9);
+    // 60 rpm for 60 s = 60 rotations on input
+    let sim = scene.run(60.0).unwrap();
+    assert!((sim.total_rotations("input", 60.0).unwrap() - 60.0).abs() < 1e-9);
+    assert!((sim.total_rotations("output", 60.0).unwrap() - 30.0).abs() < 1e-9);
 }
 
 #[test]
@@ -164,7 +149,7 @@ fn angle_at_t_zero_is_zero() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 10.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert!((sim.angle_deg("input", 0.0).unwrap()).abs() < 1e-9);
     assert!((sim.angle_deg("output", 0.0).unwrap()).abs() < 1e-9);
 }
@@ -180,10 +165,8 @@ fn angle_wraps_at_360() {
         .build()
         .unwrap();
 
-    let sim = scene.run(60.0, 100.0).unwrap();
-    // At t = 1s the input has made exactly one full revolution → 0°
+    let sim = scene.run(60.0).unwrap();
     assert!(sim.angle_deg("input", 1.0).unwrap().abs() < 1e-9);
-    // At t = 0.5s input is at 180°
     assert!((sim.angle_deg("input", 0.5).unwrap() - 180.0).abs() < 1e-9);
 }
 
@@ -199,8 +182,8 @@ fn frames_count() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 1.0).unwrap(); // 1 second
-    let frames = sim.frames(24.0); // 24 fps → 24 intervals → 25 frames
+    let sim = scene.run(1000.0).unwrap();
+    let frames = sim.frames(24.0, 1.0); // 24 fps, 1 second → 25 frames
     assert_eq!(frames.len(), 25);
 }
 
@@ -214,8 +197,8 @@ fn frames_first_time_is_zero() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 2.0).unwrap();
-    let frames = sim.frames(10.0);
+    let sim = scene.run(1000.0).unwrap();
+    let frames = sim.frames(10.0, 2.0);
     assert!(frames[0].time_secs.abs() < 1e-12);
 }
 
@@ -229,8 +212,8 @@ fn frames_each_has_all_shafts() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 1.0).unwrap();
-    for frame in sim.frames(10.0) {
+    let sim = scene.run(1000.0).unwrap();
+    for frame in sim.frames(10.0, 1.0) {
         assert!(frame.shaft_angles.contains_key("input"));
         assert!(frame.shaft_angles.contains_key("output"));
     }
@@ -252,7 +235,7 @@ fn shaft_names_sorted() {
 }
 
 #[test]
-fn driver_and_duration_accessors() {
+fn driver_and_rpm_accessors() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
         .shaft("output", vec![("b", spur(2.0, 40))])
@@ -261,10 +244,9 @@ fn driver_and_duration_accessors() {
         .build()
         .unwrap();
 
-    let sim = scene.run(300.0, 45.0).unwrap();
+    let sim = scene.run(300.0).unwrap();
     assert_eq!(sim.driver_shaft(), "input");
     assert!((sim.driver_rpm() - 300.0).abs() < 1e-9);
-    assert!((sim.duration_secs() - 45.0).abs() < 1e-9);
 }
 
 // ── Helical gear mesh ─────────────────────────────────────────────────────────
@@ -272,20 +254,14 @@ fn driver_and_duration_accessors() {
 #[test]
 fn helical_pair_rpm() {
     let scene = GearScene::builder()
-        .shaft(
-            "input",
-            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
-        )
-        .shaft(
-            "output",
-            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
-        )
+        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
+        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
         .mesh("a", "b")
         .driver("input")
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 5.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert!((sim.rpm("output").unwrap() - 500.0).abs() < 1e-9);
 }
 
@@ -352,7 +328,7 @@ fn error_gear_not_found_in_mesh() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
         .shaft("output", vec![("b", spur(2.0, 40))])
-        .mesh("a", "ghost") // "ghost" does not exist
+        .mesh("a", "ghost")
         .driver("input")
         .build();
 
@@ -367,7 +343,7 @@ fn error_mesh_gears_on_same_shaft() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20)), ("b", spur(2.0, 40))])
         .driver("input")
-        .mesh("a", "b") // both on the same shaft
+        .mesh("a", "b")
         .build();
 
     assert_eq!(
@@ -383,7 +359,7 @@ fn error_mesh_gears_on_same_shaft() {
 fn error_incompatible_mesh_different_module() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft("output", vec![("b", spur(3.0, 40))]) // module mismatch
+        .shaft("output", vec![("b", spur(3.0, 40))])
         .mesh("a", "b")
         .driver("input")
         .build();
@@ -401,10 +377,7 @@ fn error_incompatible_mesh_different_module() {
 fn error_incompatible_mesh_spur_with_helical() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft(
-            "output",
-            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
-        )
+        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
         .mesh("a", "b")
         .driver("input")
         .build();
@@ -423,7 +396,7 @@ fn error_disconnected_shaft() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
         .shaft("output", vec![("b", spur(2.0, 40))])
-        .shaft("island", vec![("c", spur(2.0, 20))]) // no mesh connecting it
+        .shaft("island", vec![("c", spur(2.0, 20))]) // no mesh
         .mesh("a", "b")
         .driver("input")
         .build();
@@ -444,34 +417,8 @@ fn error_driver_rpm_not_positive() {
         .build()
         .unwrap();
 
-    assert_eq!(
-        scene.run(0.0, 10.0).unwrap_err(),
-        GearSceneError::DriverRpmMustBePositive
-    );
-    assert_eq!(
-        scene.run(-100.0, 10.0).unwrap_err(),
-        GearSceneError::DriverRpmMustBePositive
-    );
-}
-
-#[test]
-fn error_duration_not_positive() {
-    let scene = GearScene::builder()
-        .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft("output", vec![("b", spur(2.0, 40))])
-        .mesh("a", "b")
-        .driver("input")
-        .build()
-        .unwrap();
-
-    assert_eq!(
-        scene.run(1000.0, 0.0).unwrap_err(),
-        GearSceneError::DurationMustBePositive
-    );
-    assert_eq!(
-        scene.run(1000.0, -5.0).unwrap_err(),
-        GearSceneError::DurationMustBePositive
-    );
+    assert_eq!(scene.run(0.0).unwrap_err(), GearSceneError::DriverRpmMustBePositive);
+    assert_eq!(scene.run(-100.0).unwrap_err(), GearSceneError::DriverRpmMustBePositive);
 }
 
 // ── Same scene, multiple run speeds ──────────────────────────────────────────
@@ -486,12 +433,11 @@ fn scene_reuse_at_different_speeds() {
         .build()
         .unwrap();
 
-    let sim1 = scene.run(1000.0, 1.0).unwrap();
-    let sim2 = scene.run(500.0, 1.0).unwrap();
+    let sim1 = scene.run(1000.0).unwrap();
+    let sim2 = scene.run(500.0).unwrap();
 
     assert!((sim1.rpm("output").unwrap() - 500.0).abs() < 1e-9);
     assert!((sim2.rpm("output").unwrap() - 250.0).abs() < 1e-9);
-    // Ratio is independent of speed
     assert!((sim1.ratio_to("output").unwrap() - sim2.ratio_to("output").unwrap()).abs() < 1e-9);
 }
 
@@ -499,18 +445,13 @@ fn scene_reuse_at_different_speeds() {
 
 #[test]
 fn error_over_constrained_shaft() {
-    // Shafts: A (driver), B, C
-    // A→B via gears 20t/40t  → B = A/2
-    // B→C via gears 20t/30t  → C = B × (20/30) = A/3
-    // A→C via gears 20t/30t  → C = A × (20/30) = 2A/3
-    // A/3 ≠ 2A/3 → OverConstrainedShaft on "c"
     let result = GearScene::builder()
         .shaft("a", vec![("a1", spur(2.0, 20)), ("a2", spur(3.0, 20))])
         .shaft("b", vec![("b1", spur(2.0, 40)), ("b2", spur(3.0, 20))])
         .shaft("c", vec![("c1", spur(3.0, 30)), ("c2", spur(3.0, 30))])
-        .mesh("a1", "b1") // A→B: ratio 20/40 = 0.5
-        .mesh("b2", "c1") // B→C: ratio 20/30 ≈ 0.667, so C_via_B = 0.5 × 0.667 = 0.333 × A
-        .mesh("a2", "c2") // A→C direct: ratio 20/30 ≈ 0.667 × A — contradicts 0.333
+        .mesh("a1", "b1")
+        .mesh("b2", "c1")
+        .mesh("a2", "c2")
         .driver("a")
         .build();
 
@@ -525,20 +466,14 @@ fn error_over_constrained_shaft() {
 #[test]
 fn helical_pair_directions() {
     let scene = GearScene::builder()
-        .shaft(
-            "input",
-            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
-        )
-        .shaft(
-            "output",
-            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
-        )
+        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
+        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
         .mesh("a", "b")
         .driver("input")
         .build()
         .unwrap();
 
-    let sim = scene.run(600.0, 5.0).unwrap();
+    let sim = scene.run(600.0).unwrap();
     assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
     assert_eq!(sim.direction("output"), Some(Direction::CounterClockwise));
 }
@@ -546,49 +481,33 @@ fn helical_pair_directions() {
 #[test]
 fn helical_pair_ratio() {
     let scene = GearScene::builder()
-        .shaft(
-            "input",
-            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
-        )
-        .shaft(
-            "output",
-            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
-        )
+        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
+        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
         .mesh("a", "b")
         .driver("input")
         .build()
         .unwrap();
 
-    let sim = scene.run(1000.0, 5.0).unwrap();
+    let sim = scene.run(1000.0).unwrap();
     assert!((sim.ratio_to("output").unwrap() - 2.0).abs() < 1e-9);
 }
 
 #[test]
 fn helical_compound_train() {
-    // Two-stage helical reduction: 20t→40t (2:1) then 15t→45t (3:1) = 6:1
     let scene = GearScene::builder()
-        .shaft(
-            "input",
-            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
-        )
-        .shaft(
-            "intermediate",
-            vec![
-                ("b", helical(2.0, 40, 15.0, HelixHand::Left)),
-                ("c", helical(3.0, 15, 20.0, HelixHand::Right)),
-            ],
-        )
-        .shaft(
-            "output",
-            vec![("d", helical(3.0, 45, 20.0, HelixHand::Left))],
-        )
+        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
+        .shaft("intermediate", vec![
+            ("b", helical(2.0, 40, 15.0, HelixHand::Left)),
+            ("c", helical(3.0, 15, 20.0, HelixHand::Right)),
+        ])
+        .shaft("output", vec![("d", helical(3.0, 45, 20.0, HelixHand::Left))])
         .mesh("a", "b")
         .mesh("c", "d")
         .driver("input")
         .build()
         .unwrap();
 
-    let sim = scene.run(1200.0, 10.0).unwrap();
+    let sim = scene.run(1200.0).unwrap();
     assert!((sim.rpm("output").unwrap() - 200.0).abs() < 1e-9);
     assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 }
@@ -603,14 +522,8 @@ fn anygear_teeth_and_module() {
 }
 
 #[test]
-fn anygear_face_width_none_by_default() {
-    let g = spur(2.0, 20);
-    assert!(g.face_width().is_none());
-}
-
-#[test]
 fn anygear_helical_module_is_normal_module() {
     let g = helical(2.0, 20, 15.0, HelixHand::Right);
-    assert!((g.module() - 2.0).abs() < 1e-9); // normal module, not transverse
+    assert!((g.module() - 2.0).abs() < 1e-9);
     assert_eq!(g.teeth(), 20);
 }

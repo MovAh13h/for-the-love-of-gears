@@ -595,7 +595,7 @@ impl HelicalGear {
         (self.reference_diameter() + other.reference_diameter()) / 2.0
     }
 
-    /// Speed ratio to `other`: `i = z_other / z_self`.
+    /// Speed ratio to `other`: `i = z_other / z_self` (dimensionless).
     ///
     /// ```
     /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
@@ -640,7 +640,7 @@ impl HelicalGear {
         )
     }
 
-    /// Overlap ratio `εβ = b · sin(ψ) / (π · mn)`.
+    /// Overlap ratio `εβ = b · sin(ψ) / (π · mn)` (dimensionless).
     ///
     /// The overlap ratio is the extra contact coverage produced by the helical
     /// tooth sweeping across the face width. Intuitively: when `εβ = 1`, the
@@ -667,7 +667,7 @@ impl HelicalGear {
             .map(|b| crate::contact_ratio::overlap(b, self.helix_angle, self.module))
     }
 
-    /// Total contact ratio `εγ = εα + εβ`.
+    /// Total contact ratio `εγ = εα + εβ` (dimensionless).
     ///
     /// The total contact ratio is the sum of the transverse contact ratio and
     /// the overlap ratio. For well-designed helical gears `εγ > 2.0` is common,

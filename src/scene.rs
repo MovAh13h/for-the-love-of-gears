@@ -833,18 +833,19 @@ impl GearSimulation {
         self.states.get(shaft).map(|s| s.direction)
     }
 
-    /// Total rotations completed over `duration_secs` seconds.
+    /// Total rotations completed over `duration_secs` seconds (dimensionless count).
     ///
     /// Formula: `rotations = rpm × duration_secs / 60`.
     ///
     /// A shaft at 1 800 rpm completes `1800 × 5 / 60 = 150` full turns in 5 s.
+    /// `duration_secs` is in **seconds**; the result is a plain count of full revolutions.
     ///
     /// Returns `None` if `shaft` is not a known shaft name.
     pub fn total_rotations(&self, shaft: &str, duration_secs: f64) -> Option<f64> {
         self.rpm(shaft).map(|r| r * duration_secs / 60.0)
     }
 
-    /// Angular position of the shaft at time `t` seconds, in degrees `[0°, 360°)`.
+    /// Angular position of the shaft at time `t` (**seconds**), in degrees `[0°, 360°)`.
     ///
     /// All shafts start at `0°` when `t = 0`. The angle advances linearly with
     /// time and wraps using `rem_euclid` so the result is always in `[0, 360)`:
@@ -872,7 +873,7 @@ impl GearSimulation {
     }
 
     /// Overall speed ratio from the driver to the named shaft:
-    /// `i = driver_rpm / shaft_rpm`.
+    /// `i = driver_rpm / shaft_rpm` (dimensionless).
     ///
     /// | Value | Meaning |
     /// |---|---|

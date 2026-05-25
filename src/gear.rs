@@ -434,7 +434,7 @@ impl Gear {
         (self.reference_diameter() + other.reference_diameter()) / 2.0
     }
 
-    /// Speed ratio to `other`: `i = z_other / z_self`.
+    /// Speed ratio to `other`: `i = z_other / z_self` (dimensionless).
     ///
     /// Greater than 1 means `other` rotates slower than `self` (speed
     /// reduction, torque multiplication). Less than 1 means `other` rotates
@@ -453,10 +453,10 @@ impl Gear {
         other.teeth as f64 / self.teeth as f64
     }
 
-    /// Transverse contact ratio `εα` with `other`.
+    /// Transverse contact ratio `εα` with `other` (dimensionless).
     ///
-    /// The contact ratio is the average number of tooth pairs in contact at any
-    /// instant. It is computed from the **path of contact** — the arc along
+    /// The contact ratio is the average number of tooth pairs simultaneously
+    /// in contact. It is computed from the **path of contact** — the arc along
     /// which the teeth actually touch — divided by the base pitch `pb = π·m·cos(α)`.
     ///
     /// | Range | Interpretation |
