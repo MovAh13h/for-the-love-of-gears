@@ -565,6 +565,30 @@ impl GearScene {
         None
     }
 
+    /// Index of `shaft` in the sorted shaft order used by [`SimFrame::shaft_angles`].
+    ///
+    /// The sorted order is the same as [`shaft_names`]. Look up the index once
+    /// before calling [`GearScene::run`], then reuse it across all frames:
+    ///
+    /// ```
+    /// # use for_the_love_of_gears::{gear::Gear, scene::{AnyGear, GearScene}};
+    /// let scene = GearScene::builder()
+    ///     .shaft("input",  vec![("a", AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap()))])
+    ///     .shaft("output", vec![("b", AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap()))])
+    ///     .mesh("a", "b").driver("input").build().unwrap();
+    ///
+    /// let idx = scene.shaft_index("output").unwrap();
+    /// let sim = scene.run(1000.0).unwrap();
+    /// for frame in sim.frames(24.0, 1.0) {
+    ///     let _angle = frame.shaft_angles[idx];
+    /// }
+    /// ```
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
+    pub fn shaft_index(&self, shaft: &str) -> Option<usize> {
+        self.shaft_names().iter().position(|&s| s == shaft)
+    }
+
     /// All mesh pairs in the scene, as `(gear_a_name, gear_b_name)` tuples.
     pub fn meshes(&self) -> &[(String, String)] {
         &self.meshes
