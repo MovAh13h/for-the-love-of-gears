@@ -375,15 +375,13 @@ fn total_contact_ratio_greater_than_transverse() {
 // --- Backlash ---
 
 #[test]
-fn thinned_tooth_thickness_err_on_negative_backlash() {
-    use for_the_love_of_gears::BacklashError;
-    assert_eq!(gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01), Err(BacklashError::NegativeBacklash));
+fn thinned_tooth_thickness_none_on_negative_backlash() {
+    assert!(gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01).is_none());
 }
 
 #[test]
-fn normal_backlash_err_on_negative_backlash() {
-    use for_the_love_of_gears::BacklashError;
-    assert_eq!(gear_mn2_z20_psi20_right().normal_backlash(-0.01), Err(BacklashError::NegativeBacklash));
+fn normal_backlash_none_on_negative_backlash() {
+    assert!(gear_mn2_z20_psi20_right().normal_backlash(-0.01).is_none());
 }
 
 #[test]

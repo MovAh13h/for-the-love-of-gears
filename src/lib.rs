@@ -162,20 +162,3 @@ impl fmt::Display for GearError {
     }
 }
 
-/// Error returned by backlash methods when the supplied backlash value is negative.
-#[derive(Debug, PartialEq)]
-#[non_exhaustive]
-pub enum BacklashError {
-    /// The supplied backlash value was negative.
-    NegativeBacklash,
-}
-
-impl fmt::Display for BacklashError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            BacklashError::NegativeBacklash => f.write_str("backlash must be non-negative"),
-        }
-    }
-}
-
-impl std::error::Error for BacklashError {}

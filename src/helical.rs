@@ -627,10 +627,6 @@ impl HelicalGear {
     /// into the normal plane introduces `cos(ψ)`: `sn' = sn − (jt / 2) · cos(ψ)`.
     /// Each gear in a pair is thinned by half the total backlash.
     ///
-    /// # Errors
-    ///
-    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
-    ///
     /// ```
     /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
     /// use std::f64::consts::PI;
@@ -642,12 +638,13 @@ impl HelicalGear {
     /// let s = g.thinned_tooth_thickness(0.08).unwrap();
     /// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
     /// assert!((s - expected).abs() < 1e-10);
+    /// assert!(g.thinned_tooth_thickness(-0.01).is_none());
     /// ```
-    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         if backlash_mm < 0.0 {
-            return Err(crate::BacklashError::NegativeBacklash);
+            return None;
         }
-        Ok(PI * self.module / 2.0 - backlash_mm / 2.0 * self.helix_angle.to_radians().cos())
+        Some(PI * self.module / 2.0 - backlash_mm / 2.0 * self.helix_angle.to_radians().cos())
     }
 
     /// Normal backlash from transverse backlash `jt` (mm):
@@ -658,10 +655,6 @@ impl HelicalGear {
     /// measured perpendicular to the tooth flank in the normal plane. `jn`
     /// is always smaller than `jt` — the projection shrinks it twice.
     ///
-    /// # Errors
-    ///
-    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
-    ///
     /// ```
     /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
     ///
@@ -670,12 +663,13 @@ impl HelicalGear {
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
     ///     .build().unwrap();
     /// assert!(g.normal_backlash(0.08).unwrap() < 0.08);
+    /// assert!(g.normal_backlash(-0.01).is_none());
     /// ```
-    pub fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    pub fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         if backlash_mm < 0.0 {
-            return Err(crate::BacklashError::NegativeBacklash);
+            return None;
         }
-        Ok(backlash_mm
+        Some(backlash_mm
             * self.transverse_pressure_angle().to_radians().cos()
             * self.helix_angle.to_radians().cos())
     }
@@ -784,11 +778,11 @@ impl GearGeometry for HelicalGear {
         self.base_diameter()
     }
 
-    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         self.thinned_tooth_thickness(backlash_mm)
     }
 
-    fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         self.normal_backlash(backlash_mm)
     }
 }

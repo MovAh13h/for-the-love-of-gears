@@ -441,10 +441,6 @@ impl Gear {
     /// Typical values: 0.05–0.15 mm for precision gearboxes; up to 0.5 mm for
     /// coarse industrial drives.
     ///
-    /// # Errors
-    ///
-    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
-    ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
     /// use std::f64::consts::PI;
@@ -452,12 +448,13 @@ impl Gear {
     /// let g = Gear::builder().module(2.0).teeth(20).build().unwrap();
     /// let s = g.thinned_tooth_thickness(0.08).unwrap();
     /// assert!((s - (PI - 0.04)).abs() < 1e-10);
+    /// assert!(g.thinned_tooth_thickness(-0.01).is_none());
     /// ```
-    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         if backlash_mm < 0.0 {
-            return Err(crate::BacklashError::NegativeBacklash);
+            return None;
         }
-        Ok(PI * self.module / 2.0 - backlash_mm / 2.0)
+        Some(PI * self.module / 2.0 - backlash_mm / 2.0)
     }
 
     /// Normal backlash from transverse backlash `jt` (mm): `jn = jt · cos(α)`.
@@ -470,10 +467,6 @@ impl Gear {
     /// Normal backlash is used in inspection because it can be measured directly
     /// with a feeler gauge at any point on the tooth face.
     ///
-    /// # Errors
-    ///
-    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
-    ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
     ///
@@ -481,12 +474,13 @@ impl Gear {
     /// let jn = g.normal_backlash(0.08).unwrap();
     /// let expected = 0.08 * 20.0_f64.to_radians().cos();
     /// assert!((jn - expected).abs() < 1e-10);
+    /// assert!(g.normal_backlash(-0.01).is_none());
     /// ```
-    pub fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    pub fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         if backlash_mm < 0.0 {
-            return Err(crate::BacklashError::NegativeBacklash);
+            return None;
         }
-        Ok(backlash_mm * self.pressure_angle.to_radians().cos())
+        Some(backlash_mm * self.pressure_angle.to_radians().cos())
     }
 
     /// Returns `true` if this gear would be undercut when hobbed with a standard rack tool.
@@ -585,11 +579,11 @@ impl GearGeometry for Gear {
         self.base_diameter()
     }
 
-    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         self.thinned_tooth_thickness(backlash_mm)
     }
 
-    fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+    fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         self.normal_backlash(backlash_mm)
     }
 }
