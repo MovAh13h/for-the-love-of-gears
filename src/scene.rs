@@ -286,48 +286,6 @@ impl GearGeometry for AnyGear {
         }
     }
 
-    fn addendum(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.addendum(),
-            Self::Helical(g) => g.addendum(),
-        }
-    }
-
-    fn dedendum(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.dedendum(),
-            Self::Helical(g) => g.dedendum(),
-        }
-    }
-
-    fn tooth_depth(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.tooth_depth(),
-            Self::Helical(g) => g.tooth_depth(),
-        }
-    }
-
-    fn clearance(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.clearance(),
-            Self::Helical(g) => g.clearance(),
-        }
-    }
-
-    fn tooth_thickness(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.tooth_thickness(),
-            Self::Helical(g) => g.tooth_thickness(),
-        }
-    }
-
-    fn diametral_pitch(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.diametral_pitch(),
-            Self::Helical(g) => g.diametral_pitch(),
-        }
-    }
-
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
         match self {
             Self::Spur(g) => g.thinned_tooth_thickness(backlash_mm),

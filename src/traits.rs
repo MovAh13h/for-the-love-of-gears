@@ -146,25 +146,33 @@ pub trait GearGeometry {
     ///
     /// Exactly one (normal) module. The ISO standard fixes this so that gears
     /// cut with standard tooling are interchangeable across manufacturers.
-    fn addendum(&self) -> f64;
+    fn addendum(&self) -> f64 {
+        crate::constants::ADDENDUM_COEFFICIENT * self.normal_module()
+    }
 
     /// Dedendum — radial depth below the pitch circle in mm: `hf = 1.25 · m`.
     ///
     /// One module of working depth plus 0.25 · m of clearance. The clearance
     /// prevents the tip of the mating gear from bottoming out in the root.
-    fn dedendum(&self) -> f64;
+    fn dedendum(&self) -> f64 {
+        crate::constants::DEDENDUM_COEFFICIENT * self.normal_module()
+    }
 
     /// Full tooth height from root to tip in mm: `h = ha + hf = 2.25 · m`.
     ///
     /// Every standard involute gear of the same module has the same tooth
     /// height, regardless of tooth count.
-    fn tooth_depth(&self) -> f64;
+    fn tooth_depth(&self) -> f64 {
+        crate::constants::WHOLE_DEPTH_COEFFICIENT * self.normal_module()
+    }
 
     /// Tip-to-root radial clearance in mm: `c = hf − ha = 0.25 · m`.
     ///
     /// The gap between the tip of one gear and the root of its mate. It
     /// accommodates lubricant film, thermal expansion, and the root fillet.
-    fn clearance(&self) -> f64;
+    fn clearance(&self) -> f64 {
+        crate::constants::CLEARANCE_COEFFICIENT * self.normal_module()
+    }
 
     /// Theoretical tooth thickness along the pitch circle in mm: `s = π · m / 2`.
     ///
@@ -173,7 +181,9 @@ pub trait GearGeometry {
     /// produce backlash — see [`thinned_tooth_thickness`].
     ///
     /// [`thinned_tooth_thickness`]: GearGeometry::thinned_tooth_thickness
-    fn tooth_thickness(&self) -> f64;
+    fn tooth_thickness(&self) -> f64 {
+        std::f64::consts::PI * self.normal_module() / 2.0
+    }
 
     // ── Pitch ─────────────────────────────────────────────────────────────────
 
@@ -182,7 +192,9 @@ pub trait GearGeometry {
     /// The inch-unit analogue of module. A large DP means fine (small) teeth;
     /// a small DP means coarse (large) teeth — the opposite sense from module.
     /// Only relevant when interfacing with inch-unit gear catalogues.
-    fn diametral_pitch(&self) -> f64;
+    fn diametral_pitch(&self) -> f64 {
+        crate::constants::MM_PER_INCH / self.normal_module()
+    }
 
     // ── Backlash ──────────────────────────────────────────────────────────────
 
