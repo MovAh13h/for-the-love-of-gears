@@ -852,6 +852,10 @@ impl GearGeometry for HelicalGear {
         self.teeth
     }
 
+    fn normal_module(&self) -> f64 {
+        self.module
+    }
+
     fn reference_diameter(&self) -> f64 {
         self.reference_diameter()
     }

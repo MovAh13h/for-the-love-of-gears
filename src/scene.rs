@@ -227,6 +227,13 @@ impl GearGeometry for AnyGear {
         }
     }
 
+    fn normal_module(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.normal_module(),
+            Self::Helical(g) => g.normal_module(),
+        }
+    }
+
     fn reference_diameter(&self) -> f64 {
         match self {
             Self::Spur(g) => g.reference_diameter(),

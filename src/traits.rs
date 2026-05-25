@@ -47,10 +47,9 @@
 //!
 //! The trait does **not** include:
 //!
-//! - **Module / pressure angle** — the names differ (`module` / `pressure_angle`
-//!   on `Gear`; `normal_module` / `normal_pressure_angle` on `HelicalGear`).
-//!   Fix 7 added `normal_*` aliases to `Gear`, but the trait deliberately omits
-//!   these because adding a method to a trait is a breaking change.
+//! - **Pressure angle** — the names differ (`pressure_angle` on `Gear`;
+//!   `normal_pressure_angle` on `HelicalGear`). The trait omits these because
+//!   the values are not directly comparable across gear types.
 //! - **Contact ratio** — the spur and helical methods have different signatures
 //!   (`contact_ratio_with` vs `transverse_contact_ratio_with`) and pair methods
 //!   require two gears of the *same* type, which is hard to abstract cleanly
@@ -100,6 +99,16 @@ pub trait GearGeometry {
     /// diameter: `d = m · z`. The gear ratio between two meshing gears is
     /// `z_other / z_self`.
     fn teeth(&self) -> u32;
+
+    /// Normal module in mm.
+    ///
+    /// The normal module is the fundamental tooth-size parameter measured
+    /// perpendicular to the tooth helix. For spur gears the normal and
+    /// transverse modules are identical. For helical gears:
+    /// `mn = mt · cos(ψ)`.
+    ///
+    /// Two gears can only mesh if they share the same normal module.
+    fn normal_module(&self) -> f64;
 
     // ── Diameters (mm) ────────────────────────────────────────────────────────
 
