@@ -515,6 +515,69 @@ fn helical_compound_train() {
     assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 }
 
+// ── Closed-loop direction paradox ────────────────────────────────────────────
+
+#[test]
+fn error_closed_loop_direction_paradox() {
+    // Three equal spur gears in a triangle: A→B, A→C, C→B.
+    // All ratios are 1:1, so the RPM check alone passes, but the direction
+    // constraint is unsatisfiable — B is driven CCW by A yet must be CW from C.
+    let result = GearScene::builder()
+        .shaft("a", vec![("ag", spur(2.0, 20))])
+        .shaft("b", vec![("bg", spur(2.0, 20))])
+        .shaft("c", vec![("cg", spur(2.0, 20))])
+        .mesh("ag", "bg")
+        .mesh("ag", "cg")
+        .mesh("cg", "bg")
+        .driver("a")
+        .build();
+
+    assert_eq!(
+        result.unwrap_err(),
+        GearSceneError::OverConstrainedShaft("c".to_string())
+    );
+}
+
+// ── Duplicate mesh ────────────────────────────────────────────────────────────
+
+#[test]
+fn error_duplicate_mesh_same_order() {
+    let result = GearScene::builder()
+        .shaft("input", vec![("a", spur(2.0, 20))])
+        .shaft("output", vec![("b", spur(2.0, 40))])
+        .mesh("a", "b")
+        .mesh("a", "b")
+        .driver("input")
+        .build();
+
+    assert_eq!(
+        result.unwrap_err(),
+        GearSceneError::DuplicateMesh {
+            gear_a: "a".to_string(),
+            gear_b: "b".to_string(),
+        }
+    );
+}
+
+#[test]
+fn error_duplicate_mesh_reversed_order() {
+    let result = GearScene::builder()
+        .shaft("input", vec![("a", spur(2.0, 20))])
+        .shaft("output", vec![("b", spur(2.0, 40))])
+        .mesh("a", "b")
+        .mesh("b", "a")
+        .driver("input")
+        .build();
+
+    assert_eq!(
+        result.unwrap_err(),
+        GearSceneError::DuplicateMesh {
+            gear_a: "b".to_string(),
+            gear_b: "a".to_string(),
+        }
+    );
+}
+
 // ── AnyGear accessors ─────────────────────────────────────────────────────────
 
 #[test]
