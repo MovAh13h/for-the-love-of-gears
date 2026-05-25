@@ -387,9 +387,6 @@ impl GearSceneBuilder {
         // --- Validate meshes and build shaft adjacency list ---
         // shaft_edges[shaft] = Vec<(other_shaft, ratio)>  where ratio = rpm_other / rpm_self
         let mut shaft_edges: HashMap<String, Vec<(String, f64)>> = HashMap::new();
-        for shaft_name in shafts.keys() {
-            shaft_edges.entry(shaft_name.clone()).or_default();
-        }
 
         for (gear_a, gear_b) in &self.meshes {
             let shaft_a = gear_to_shaft
