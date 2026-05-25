@@ -882,32 +882,37 @@ impl HelicalGearBuilder {
 
     /// Build the [`HelicalGear`], validating all inputs.
     pub fn build(self) -> Result<HelicalGear, HelicalGearError> {
+        if let Some(m) = self.module {
+            if m <= 0.0 {
+                return Err(HelicalGearError::ModuleMustBePositive);
+            }
+        }
+        if let Some(ha) = self.helix_angle {
+            if ha <= 0.0 {
+                return Err(HelicalGearError::HelixAngleMustBePositive);
+            }
+            if ha >= 90.0 {
+                return Err(HelicalGearError::HelixAngleMustBeLessThan90);
+            }
+        }
+        if let Some(pa) = self.normal_pressure_angle {
+            if pa <= 0.0 {
+                return Err(HelicalGearError::PressureAngleMustBePositive);
+            }
+        }
+        if let Some(fw) = self.face_width {
+            if fw <= 0.0 {
+                return Err(HelicalGearError::FaceWidthMustBePositive);
+            }
+        }
+
         let module = self.module.ok_or(HelicalGearError::ModuleRequired)?;
         let teeth = self.teeth.ok_or(HelicalGearError::TeethRequired)?;
         let helix_angle = self.helix_angle.ok_or(HelicalGearError::HelixAngleRequired)?;
         let helix_hand = self.helix_hand.ok_or(HelicalGearError::HelixHandRequired)?;
 
-        if module <= 0.0 {
-            return Err(HelicalGearError::ModuleMustBePositive);
-        }
         if teeth < MIN_TEETH {
             return Err(HelicalGearError::TeethTooFew);
-        }
-        if helix_angle <= 0.0 {
-            return Err(HelicalGearError::HelixAngleMustBePositive);
-        }
-        if helix_angle >= 90.0 {
-            return Err(HelicalGearError::HelixAngleMustBeLessThan90);
-        }
-
-        let normal_pressure_angle =
-            self.normal_pressure_angle.unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE);
-        if normal_pressure_angle <= 0.0 {
-            return Err(HelicalGearError::PressureAngleMustBePositive);
-        }
-
-        if self.face_width.is_some_and(|fw| fw <= 0.0) {
-            return Err(HelicalGearError::FaceWidthMustBePositive);
         }
 
         Ok(HelicalGear {
@@ -915,7 +920,7 @@ impl HelicalGearBuilder {
             teeth,
             helix_angle,
             helix_hand,
-            normal_pressure_angle,
+            normal_pressure_angle: self.normal_pressure_angle.unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE),
             face_width: self.face_width,
         })
     }
