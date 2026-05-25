@@ -258,34 +258,87 @@ impl Direction {
 #[non_exhaustive]
 pub enum GearSceneError {
     /// Two shafts were given the same name.
+    ///
+    /// Every shaft in a scene must have a unique string identifier. Duplicate
+    /// names make it impossible to unambiguously reference a shaft in mesh
+    /// definitions, driver selection, or simulation queries.
     DuplicateShaftName(String),
+
     /// Two gears were given the same name (gear names must be unique across the whole scene).
+    ///
+    /// Gear names are used in `.mesh()` calls to connect shafts. If two gears
+    /// share a name, the simulator cannot determine which gear a mesh refers to.
     DuplicateGearName(String),
+
     /// No driver shaft was specified via `.driver()`.
+    ///
+    /// The driver shaft is the entry point for power and motion. Without one,
+    /// the simulator has no starting RPM and no direction reference — it cannot
+    /// propagate rotation to any other shaft.
     DriverShaftRequired,
+
     /// The driver shaft name does not match any shaft in the scene.
+    ///
+    /// The string is the name that was passed to `.driver()`. Check for
+    /// typos or ensure the shaft was added before calling `.driver()`.
     DriverShaftNotFound(String),
+
     /// A gear referenced in a `.mesh()` call does not exist.
+    ///
+    /// The string is the unrecognised gear name. Check that you spelled the
+    /// gear name correctly and that it was mounted on a shaft before being
+    /// used in a mesh.
     GearNotFound(String),
-    /// Both gears in a `.mesh()` call are on the same shaft — a gear cannot mesh with itself.
+
+    /// Both gears in a `.mesh()` call are on the same shaft.
+    ///
+    /// A gear cannot mesh with another gear on the same shaft — they rotate
+    /// together and transmit no force between them. Connect gears on
+    /// *different* shafts to transfer motion.
     MeshGearsOnSameShaft {
         /// Name of the first gear in the mesh.
         gear_a: String,
         /// Name of the second gear in the mesh.
         gear_b: String,
     },
-    /// The two gears in a mesh are incompatible (different module or gear type).
+
+    /// The two gears in a mesh have incompatible geometry (different module,
+    /// pressure angle, or gear type).
+    ///
+    /// For a mesh to be physically valid, the two gears must pass
+    /// [`Gear::can_mesh_with`] or [`HelicalGear::can_mesh_with`]. A spur gear
+    /// cannot mesh with a helical gear.
+    ///
+    /// [`Gear::can_mesh_with`]: crate::gear::Gear::can_mesh_with
+    /// [`HelicalGear::can_mesh_with`]: crate::helical::HelicalGear::can_mesh_with
     IncompatibleMesh {
         /// Name of the first gear in the mesh.
         gear_a: String,
         /// Name of the second gear in the mesh.
         gear_b: String,
     },
-    /// A shaft has no mesh connections leading back to the driver — it would never move.
+
+    /// A shaft has no mesh connections leading back to the driver shaft.
+    ///
+    /// The string is the name of the disconnected shaft. Every shaft in the
+    /// scene must be reachable from the driver through a chain of meshes.
+    /// A disconnected shaft would receive no driving force and its RPM would
+    /// be undefined.
     DisconnectedShaft(String),
-    /// A shaft is reachable via two different mesh paths that imply different RPM values.
+
+    /// A shaft is reachable via two different mesh paths that imply conflicting RPM values.
+    ///
+    /// This happens in closed kinematic loops — for example, when gear A meshes
+    /// with both B and C, and B also meshes with C. The loop constrains all
+    /// three ratios simultaneously. Only chains (open paths from the driver)
+    /// are currently supported.
     OverConstrainedShaft(String),
-    /// Driver RPM must be greater than zero.
+
+    /// Driver RPM must be strictly greater than zero.
+    ///
+    /// A non-positive driver RPM has no physical meaning — zero means the
+    /// gear train is stationary and negative means reverse direction (not
+    /// currently modelled). Pass a positive value to [`GearScene::run`].
     DriverRpmMustBePositive,
 }
 

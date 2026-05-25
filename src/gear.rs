@@ -1,14 +1,39 @@
 //! Spur gears — teeth parallel to the rotation axis.
 //!
-//! A spur gear is fully defined by three parameters:
+//! A spur gear is the simplest form of involute gear: teeth run straight across
+//! the face, parallel to the shaft. They are inexpensive to manufacture and
+//! produce no axial (thrust) forces, at the cost of more noise at high speed
+//! compared to helical gears.
+//!
+//! # Involute tooth profile
+//!
+//! Every spur gear in this library uses an **involute** profile. The involute of
+//! a circle is the curve traced by the end of a taut string unwrapped from that
+//! circle — the **base circle**. This geometric property ensures that, as two
+//! involute gears rotate together, the contact point travels along a straight
+//! line called the **line of action**, producing a constant velocity ratio
+//! regardless of small centre-distance errors. No other tooth form has this
+//! property.
+//!
+//! # Parameters
+//!
+//! A spur gear is fully defined by three values:
 //!
 //! | Parameter | Symbol | Unit | Default |
 //! |---|---|---|---|
 //! | Module | `m` | mm | required |
-//! | Number of teeth | `z` | — | required |
-//! | Pressure angle | `α` | degrees | 20° (ISO) |
+//! | Number of teeth | `z` | — | required (min 3) |
+//! | Pressure angle | `α` | degrees | 20° ([`ISO_PRESSURE_ANGLE_DEG`]) |
 //!
-//! Two gears mesh when they share the same module. Size and ratio are independent.
+//! **Module** is the fundamental tooth-size parameter. It equals the pitch
+//! circle diameter divided by the tooth count: `m = d / z`. Two gears can
+//! only mesh if they share the same module — this is the single most important
+//! compatibility constraint. All tooth dimensions are proportional to `m`.
+//!
+//! **Pressure angle** is the angle between the line of action and the common
+//! tangent to the two pitch circles at the pitch point. It determines the
+//! tooth flank angle and controls the balance between smooth operation (smaller
+//! α) and load-carrying capacity (larger α). ISO standardises on 20°.
 //!
 //! # Quick start
 //!
@@ -34,31 +59,62 @@
 //! assert_eq!(driver.gear_ratio_to(&driven), 2.0);
 //! assert_eq!(driver.center_distance_to(&driven), 60.0);
 //! ```
+//!
+//! [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
 
 use std::{f64::consts::PI, fmt};
 
-use crate::traits::GearGeometry;
+use crate::{
+    constants::{
+        ADDENDUM_COEFFICIENT, CLEARANCE_COEFFICIENT, DEDENDUM_COEFFICIENT, MIN_TEETH,
+        MM_PER_INCH, WHOLE_DEPTH_COEFFICIENT,
+    },
+    traits::GearGeometry,
+};
 
-const DEFAULT_PRESSURE_ANGLE: f64 = 20.0;
+/// The ISO standard pressure angle in degrees, used when the caller does not
+/// specify one. See [`crate::constants::ISO_PRESSURE_ANGLE_DEG`].
+const DEFAULT_PRESSURE_ANGLE: f64 = crate::constants::ISO_PRESSURE_ANGLE_DEG;
+
+// ── Error type ────────────────────────────────────────────────────────────────
 
 /// Errors returned by [`GearBuilder::build`].
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]
 pub enum GearError {
-    /// `.module()` was not called.
+    /// `.module()` was not called on the builder.
     ModuleRequired,
-    /// `.teeth()` was not called.
+
+    /// `.teeth()` was not called on the builder.
     TeethRequired,
-    /// Module must be greater than zero.
-    ModuleMustBePositive,
-    /// Tooth count must be at least 1.
-    TeethMustBePositive,
-    /// Tooth count must be at least 3 to produce a positive root diameter.
+
+    /// Module must be strictly greater than zero.
     ///
-    /// With fewer than 3 teeth the dedendum exceeds the pitch radius and
-    /// `df = m(z − 2.5)` becomes zero or negative, which is geometrically invalid.
+    /// A zero or negative module has no physical meaning — it would imply a
+    /// gear with zero or inverted tooth size. The module is the ratio of pitch
+    /// diameter to tooth count and must be a positive length in mm.
+    ModuleMustBePositive,
+
+    /// Tooth count must be at least 1.
+    ///
+    /// A gear with zero teeth cannot transmit motion.
+    TeethMustBePositive,
+
+    /// Tooth count must be at least [`MIN_TEETH`] (3).
+    ///
+    /// With the standard dedendum coefficient of 1.25, the root diameter
+    /// formula `df = m(z − 2.5)` equals zero at `z = 2.5` and goes negative
+    /// for `z = 1` or `z = 2`. A negative root diameter is geometrically
+    /// invalid — the teeth would extend past the centre of the gear.
+    ///
+    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
     TeethTooFew,
-    /// Pressure angle must be greater than zero degrees.
+
+    /// Pressure angle must be strictly greater than zero degrees.
+    ///
+    /// A zero pressure angle would produce a vertical tooth flank — one that
+    /// transmits force purely radially with no tangential component. The gear
+    /// could not drive a load. Negative values have no physical meaning.
     PressureAngleMustBePositive,
 }
 
@@ -82,10 +138,28 @@ impl fmt::Display for GearError {
     }
 }
 
+// ── Gear type ─────────────────────────────────────────────────────────────────
+
 /// A fully defined spur gear.
 ///
-/// All geometry methods return values in **millimetres** (or degrees / dimensionless
-/// where noted). Build with [`Gear::builder()`].
+/// All geometry methods return values in **millimetres** (or degrees /
+/// dimensionless where noted). Build via [`Gear::builder()`].
+///
+/// # Dimension overview
+///
+/// ```text
+///            ┌──── tip circle (da) ────┐
+///        ┌───┤                         ├───┐
+///       /    │   ┌─── pitch circle (d)    │   \
+///      │     │   │                    │   │    │  ← addendum (ha = m)
+///      │     ╔═══╧════════════════════╧═══╗    │
+///      │     ║     tooth cross-section    ║    │
+///      │     ╚═══╤════════════════════╤═══╝    │
+///      │     │   │                    │   │    │  ← dedendum (hf = 1.25m)
+///       \    │   └─── root circle (df)    │   /
+///        └───┤                         ├───┘
+///            └──── root circle (df) ───┘
+/// ```
 ///
 /// # Example
 ///
@@ -118,11 +192,22 @@ impl Gear {
     // ── Inputs ────────────────────────────────────────────────────────────────
 
     /// Module (tooth size) in mm.
+    ///
+    /// Module is defined as `m = d / z` — the pitch circle diameter divided by
+    /// the tooth count. It controls the physical size of every tooth:
+    /// doubling the module doubles the tooth height, pitch, and all diameters.
+    ///
+    /// Common ISO module values: 1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10, 12,
+    /// 16, 20 (ISO 54 series). Two gears must share the same module to mesh.
     pub fn module(&self) -> f64 {
         self.module
     }
 
     /// Normal module in mm — alias for [`module`] for symmetry with `HelicalGear`.
+    ///
+    /// For spur gears there is only one module (the normal and transverse planes
+    /// coincide). Use this name when writing code that is generic over both
+    /// spur and helical gears.
     ///
     /// [`module`]: Gear::module
     pub fn normal_module(&self) -> f64 {
@@ -130,11 +215,22 @@ impl Gear {
     }
 
     /// Number of teeth.
+    ///
+    /// Together with the module, the tooth count fully determines the pitch
+    /// circle diameter: `d = m · z`. The gear ratio between two meshing gears
+    /// is simply the ratio of their tooth counts.
     pub fn teeth(&self) -> u32 {
         self.teeth
     }
 
-    /// Pressure angle in degrees. Default is `20.0°` (ISO standard).
+    /// Pressure angle `α` in degrees.
+    ///
+    /// Default is [`DEFAULT_PRESSURE_ANGLE`] (20°, per ISO 21771). The pressure
+    /// angle is the angle between the tooth normal force and the tangent to the
+    /// pitch circle. A larger angle means:
+    /// - **Stronger teeth** — more material in the root cross-section
+    /// - **Higher radial load** on the bearings — force has a larger radial component
+    /// - **Less risk of undercutting** on small tooth counts
     pub fn pressure_angle(&self) -> f64 {
         self.pressure_angle
     }
@@ -148,24 +244,56 @@ impl Gear {
 
     // ── Diameters (mm) ────────────────────────────────────────────────────────
 
-    /// Pitch circle diameter in mm: `d = m·z`.
+    /// Pitch circle diameter in mm: `d = m · z`.
+    ///
+    /// The pitch circle is the reference circle from which all tooth proportions
+    /// are measured. When two gears mesh, their pitch circles are tangent at the
+    /// **pitch point** — the contact point on the line of centres. The centre
+    /// distance between two gears equals `(d₁ + d₂) / 2`.
     pub fn reference_diameter(&self) -> f64 {
         self.module * self.teeth as f64
     }
 
     /// Tip (outer) diameter in mm: `da = m(z + 2)`.
+    ///
+    /// The tip circle bounds the gear tooth from the outside. It equals the
+    /// pitch diameter plus two addenda: `da = d + 2·ha = m·z + 2·m`.
+    /// The addendum height of `1·m` above the pitch circle is set by the ISO
+    /// standard to ensure adequate contact ratio with a mating gear.
     pub fn tip_diameter(&self) -> f64 {
-        self.module * (self.teeth as f64 + 2.0)
+        self.module * (self.teeth as f64 + 2.0 * ADDENDUM_COEFFICIENT)
     }
 
     /// Root diameter in mm: `df = m(z − 2.5)`.
+    ///
+    /// The root circle is where the tooth meets the gear body. It lies
+    /// `hf = 1.25·m` below the pitch circle — one addendum plus the clearance
+    /// gap: `df = d − 2·hf = m·z − 2.5·m`. The root diameter must be positive,
+    /// which is why [`MIN_TEETH`] = 3 is enforced by the builder.
+    ///
+    /// **Practical note:** For very small tooth counts (z = 3–5) the base circle
+    /// may extend below the root circle, meaning the involute profile does not
+    /// reach all the way down. Undercutting is a manufacturing concern in those
+    /// cases.
+    ///
+    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
     pub fn root_diameter(&self) -> f64 {
-        self.module * (self.teeth as f64 - 2.5)
+        self.module * (self.teeth as f64 - 2.0 * DEDENDUM_COEFFICIENT)
     }
 
     /// Base circle diameter in mm: `db = d · cos(α)`.
     ///
-    /// The involute tooth profile unrolls from this circle.
+    /// The base circle is where the involute tooth profile originates. The
+    /// involute curve is traced by a point on a taut string unwrapping from
+    /// this circle. The size of the base circle relative to the pitch circle is
+    /// controlled entirely by the pressure angle: `db = d · cos(α)`. A larger
+    /// pressure angle produces a smaller base circle, and therefore a steeper
+    /// tooth flank.
+    ///
+    /// **Important:** if `db > df` (base circle larger than root circle), part
+    /// of the root is not an involute — it becomes a straight radial fillet cut
+    /// by the tool. This is normal for small gears (z < ~17 at 20°) and does
+    /// not prevent meshing, but it does affect the effective contact ratio.
     pub fn base_diameter(&self) -> f64 {
         self.reference_diameter() * self.pressure_angle.to_radians().cos()
     }
@@ -173,35 +301,65 @@ impl Gear {
     // ── Tooth profile (mm) ────────────────────────────────────────────────────
 
     /// Addendum — radial height above pitch circle in mm: `ha = m`.
-    pub fn addendum(&self) -> f64 {
-        self.module
-    }
-
-    /// Dedendum — radial depth below pitch circle in mm: `hf = 1.25·m`.
-    pub fn dedendum(&self) -> f64 {
-        1.25 * self.module
-    }
-
-    /// Full tooth height root-to-tip in mm: `h = 2.25·m`.
-    pub fn tooth_depth(&self) -> f64 {
-        2.25 * self.module
-    }
-
-    /// Tip-to-root radial clearance in mm: `c = 0.25·m`.
-    pub fn clearance(&self) -> f64 {
-        0.25 * self.module
-    }
-
-    /// Theoretical tooth thickness along pitch circle in mm: `s = πm / 2`.
     ///
-    /// For the thinned value used in real pairs see [`Gear::thinned_tooth_thickness`].
+    /// The addendum is exactly one module. This means the tip circle is always
+    /// one module above the pitch circle: `ra_tip = d/2 + m`. The ISO standard
+    /// sets `ha = m` (addendum coefficient = 1) so that standard rack cutters
+    /// and gear blanks are interchangeable across manufacturers.
+    pub fn addendum(&self) -> f64 {
+        ADDENDUM_COEFFICIENT * self.module
+    }
+
+    /// Dedendum — radial depth below pitch circle in mm: `hf = 1.25 · m`.
+    ///
+    /// The dedendum is 1.25 modules — one module of working depth (to match the
+    /// mating gear's addendum) plus 0.25 modules of **clearance**. The extra
+    /// 0.25·m ensures the tip of the mating gear never contacts the root, even
+    /// accounting for manufacturing tolerances and thermal growth.
+    pub fn dedendum(&self) -> f64 {
+        DEDENDUM_COEFFICIENT * self.module
+    }
+
+    /// Full tooth height root-to-tip in mm: `h = 2.25 · m`.
+    ///
+    /// This is the sum of addendum and dedendum: `h = ha + hf = m + 1.25·m`.
+    /// All standard involute gears have this tooth height regardless of tooth
+    /// count, so a module-2 gear always has 4.5 mm deep teeth whether it has
+    /// 20 or 200 teeth.
+    pub fn tooth_depth(&self) -> f64 {
+        WHOLE_DEPTH_COEFFICIENT * self.module
+    }
+
+    /// Tip-to-root radial clearance in mm: `c = 0.25 · m`.
+    ///
+    /// Clearance is the gap between the tip of one gear and the root of its
+    /// mate: `c = hf − ha = 0.25·m`. It serves three purposes:
+    /// 1. Prevents tip-to-root jamming from thermal expansion
+    /// 2. Provides a channel for lubricant to reach the contact zone
+    /// 3. Accommodates the root-fillet radius without interference
+    pub fn clearance(&self) -> f64 {
+        CLEARANCE_COEFFICIENT * self.module
+    }
+
+    /// Theoretical tooth thickness along pitch circle in mm: `s = π · m / 2`.
+    ///
+    /// On a standard gear, the tooth and space are equal on the pitch circle, so
+    /// each occupies half the circular pitch: `s = p / 2 = π·m / 2`. Real gears
+    /// have a slightly thinned tooth to create backlash — see
+    /// [`thinned_tooth_thickness`].
+    ///
+    /// [`thinned_tooth_thickness`]: Gear::thinned_tooth_thickness
     pub fn tooth_thickness(&self) -> f64 {
         PI * self.module / 2.0
     }
 
     // ── Pitch ─────────────────────────────────────────────────────────────────
 
-    /// Arc length between adjacent teeth along pitch circle in mm: `p = πm`.
+    /// Arc length between adjacent teeth along the pitch circle in mm: `p = π · m`.
+    ///
+    /// The pitch circle has circumference `π · d = π · m · z`. Dividing by `z`
+    /// gives `p = π · m` per tooth. Two gears can only mesh if their pitches
+    /// are equal — which is equivalent to requiring equal modules.
     pub fn circular_pitch(&self) -> f64 {
         PI * self.module
     }
@@ -215,14 +373,30 @@ impl Gear {
 
     /// Teeth per inch of pitch diameter (imperial): `DP = 25.4 / m`.
     ///
-    /// Only relevant when interfacing with inch-unit systems.
+    /// Diametral pitch is the inch-unit analogue of module. It counts the number
+    /// of teeth per inch of pitch diameter. A large DP means fine (small) teeth;
+    /// a small DP means coarse (large) teeth — the opposite of module. Common
+    /// DP values: 4, 6, 8, 10, 12, 16, 20, 24, 32, 48.
+    ///
+    /// Only relevant when interfacing with inch-unit systems. For SI work, use
+    /// [`module`].
+    ///
+    /// [`module`]: Gear::module
     pub fn diametral_pitch(&self) -> f64 {
-        25.4 / self.module
+        MM_PER_INCH / self.module
     }
 
     // ── Gear pair ─────────────────────────────────────────────────────────────
 
-    /// `true` if this gear can mesh with `other` (same module and pressure angle, within tolerance).
+    /// `true` if this gear can mesh with `other` (same module and pressure angle,
+    /// within floating-point tolerance).
+    ///
+    /// Two spur gears mesh correctly only when:
+    /// - Their **modules are equal** — otherwise tooth pitch does not match and
+    ///   the teeth will jam or skip.
+    /// - Their **pressure angles are equal** — otherwise the tooth flanks have
+    ///   different angles, preventing smooth rolling contact along the line of
+    ///   action.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -241,7 +415,13 @@ impl Gear {
             && (self.pressure_angle - other.pressure_angle).abs() < crate::MESH_TOLERANCE
     }
 
-    /// Centre distance in mm: `a = (d1 + d2) / 2`.
+    /// Centre distance in mm: `a = (d₁ + d₂) / 2`.
+    ///
+    /// This is the required shaft-to-shaft distance for the two gears to mesh
+    /// at their standard pitch circles. At this distance the pitch circles are
+    /// tangent and the gear ratio equals exactly `z₂ / z₁`. Mounting the gears
+    /// closer increases backlash interference; mounting them farther apart
+    /// increases backlash — both degrade tooth contact.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -256,7 +436,9 @@ impl Gear {
 
     /// Speed ratio to `other`: `i = z_other / z_self`.
     ///
-    /// Greater than 1 → `other` is slower (reduction). Less than 1 → faster (step-up).
+    /// Greater than 1 means `other` rotates slower than `self` (speed
+    /// reduction, torque multiplication). Less than 1 means `other` rotates
+    /// faster (speed increase, torque reduction).
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -273,8 +455,20 @@ impl Gear {
 
     /// Transverse contact ratio `εα` with `other`.
     ///
-    /// Values above `1.2` are required for smooth running; `1.4–1.8` is typical
-    /// for general industrial machinery.
+    /// The contact ratio is the average number of tooth pairs in contact at any
+    /// instant. It is computed from the **path of contact** — the arc along
+    /// which the teeth actually touch — divided by the base pitch `pb = π·m·cos(α)`.
+    ///
+    /// | Range | Interpretation |
+    /// |---|---|
+    /// | < 1.2 | Avoid — noisy, high impact loads |
+    /// | 1.2 – 1.4 | Minimum for general machinery |
+    /// | 1.4 – 1.8 | Good industrial practice |
+    /// | > 2.0 | Achievable with many teeth or large addenda |
+    ///
+    /// A value of 1.6, for example, means the gear pair spends 60% of the time
+    /// with two pairs of teeth in contact and 40% with only one pair — the load
+    /// is shared most of the time.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -305,10 +499,20 @@ impl Gear {
 
     // ── Backlash ──────────────────────────────────────────────────────────────
 
-    /// Thinned tooth thickness after applying pair backlash `jt` (mm): `s' = πm/2 − jt/2`.
+    /// Thinned tooth thickness after applying pair backlash `jt` (mm):
+    /// `s' = π·m / 2 − jt / 2`.
     ///
-    /// Backlash is a pair property. Under equal distribution each gear is thinned
-    /// by `jt / 2` so the two gears together produce the full gap.
+    /// **Backlash** is the intentional gap between mating tooth flanks when the
+    /// drive flank is in contact. It prevents jamming from thermal expansion and
+    /// allows a lubricant film to form. Backlash is a **pair property**: the
+    /// total gap `jt` is split equally, thinning each gear by `jt / 2`.
+    ///
+    /// Typical values: 0.05–0.15 mm for precision gearboxes; up to 0.5 mm for
+    /// coarse industrial drives.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `backlash_mm < 0.0`.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -323,10 +527,19 @@ impl Gear {
         PI * self.module / 2.0 - backlash_mm / 2.0
     }
 
-    /// Normal backlash from circular backlash `jt` (mm): `jn = jt · cos(α)`.
+    /// Normal backlash from transverse backlash `jt` (mm): `jn = jt · cos(α)`.
     ///
-    /// Normal backlash is what a feeler gauge reads when held perpendicular to
-    /// the tooth flank — it is smaller than the circular gap `jt`.
+    /// The **transverse backlash** `jt` is the gap measured along the pitch
+    /// circle (an arc length). The **normal backlash** `jn` is what a feeler
+    /// gauge reads when inserted perpendicular to the tooth flank — it is
+    /// smaller than `jt` by the cosine of the pressure angle.
+    ///
+    /// Normal backlash is used in inspection because it can be measured directly
+    /// with a feeler gauge at any point on the tooth face.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `backlash_mm < 0.0`.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
@@ -341,6 +554,8 @@ impl Gear {
         backlash_mm * self.pressure_angle.to_radians().cos()
     }
 }
+
+// ── GearGeometry trait impl ───────────────────────────────────────────────────
 
 impl GearGeometry for Gear {
     fn teeth(&self) -> u32 {
@@ -396,9 +611,16 @@ impl GearGeometry for Gear {
     }
 }
 
+// ── Builder ───────────────────────────────────────────────────────────────────
+
 /// Builder for [`Gear`]. Obtain via [`Gear::builder()`].
 ///
-/// `module` and `teeth` are required. `pressure_angle` defaults to `20.0°`.
+/// `module` and `teeth` are required. `pressure_angle` defaults to
+/// [`ISO_PRESSURE_ANGLE_DEG`] (20°).
+///
+/// # Errors
+///
+/// [`build`] returns a [`GearError`] if any constraint is violated:
 ///
 /// ```
 /// use for_the_love_of_gears::gear::{Gear, GearError};
@@ -416,6 +638,9 @@ impl GearGeometry for Gear {
 ///     Err(GearError::TeethTooFew)
 /// );
 /// ```
+///
+/// [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
+/// [`build`]: GearBuilder::build
 #[derive(Debug, Default)]
 pub struct GearBuilder {
     module: Option<f64>,
@@ -425,18 +650,29 @@ pub struct GearBuilder {
 
 impl GearBuilder {
     /// Set the module (tooth size) in mm.
+    ///
+    /// See [`Gear::module`] for a full description. Must be positive.
     pub fn module(mut self, m: f64) -> Self {
         self.module = Some(m);
         self
     }
 
     /// Set the number of teeth.
+    ///
+    /// Must be at least [`MIN_TEETH`] (3). See [`Gear::teeth`].
+    ///
+    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
     pub fn teeth(mut self, z: u32) -> Self {
         self.teeth = Some(z);
         self
     }
 
-    /// Set the pressure angle in degrees. Defaults to `20.0°` if not called.
+    /// Set the pressure angle in degrees.
+    ///
+    /// Defaults to [`ISO_PRESSURE_ANGLE_DEG`] (20°) if not called. Must be
+    /// positive. See [`Gear::pressure_angle`] for the physical meaning.
+    ///
+    /// [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
     pub fn pressure_angle(mut self, degrees: f64) -> Self {
         self.pressure_angle = Some(degrees);
         self
@@ -453,7 +689,7 @@ impl GearBuilder {
         if teeth == 0 {
             return Err(GearError::TeethMustBePositive);
         }
-        if teeth < 3 {
+        if teeth < MIN_TEETH {
             return Err(GearError::TeethTooFew);
         }
 
