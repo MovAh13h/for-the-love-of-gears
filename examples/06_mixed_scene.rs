@@ -83,6 +83,10 @@ fn main() {
     println!("  {:<26}  {:>6.3}  {:>6.3}  {:>6.3}", "intermediate→output (helical)", ea_hel, eb_hel, eg_hel);
 
     println!();
+    let i_in  = sim.shaft_index("input").unwrap();
+    let i_mid = sim.shaft_index("intermediate").unwrap();
+    let i_out = sim.shaft_index("output").unwrap();
+
     println!("ANIMATION FRAMES  (10 fps, first 0.3 s)");
     println!(
         "  {:<7}  {:>10}  {:>16}  {:>10}",
@@ -93,9 +97,9 @@ fn main() {
         println!(
             "  {:<7.2}  {:>9.1}°  {:>15.1}°  {:>9.1}°",
             frame.time_secs,
-            frame.shaft_angles["input"],
-            frame.shaft_angles["intermediate"],
-            frame.shaft_angles["output"],
+            frame.shaft_angles[i_in],
+            frame.shaft_angles[i_mid],
+            frame.shaft_angles[i_out],
         );
     }
 }

@@ -121,7 +121,7 @@
 //! ```
 
 use std::{
-    collections::{BTreeMap, HashMap, VecDeque},
+    collections::{HashMap, VecDeque},
     fmt,
 };
 
@@ -584,7 +584,7 @@ impl GearScene {
             return Err(GearSceneError::DriverRpmMustBePositive);
         }
 
-        let states = self
+        let states: HashMap<String, ShaftState> = self
             .states
             .iter()
             .map(|(shaft, s)| {
@@ -592,8 +592,12 @@ impl GearScene {
             })
             .collect();
 
+        let mut shaft_order: Vec<String> = states.keys().cloned().collect();
+        shaft_order.sort();
+
         Ok(GearSimulation {
             states,
+            shaft_order,
             driver_shaft: self.driver_shaft.clone(),
             driver_rpm,
         })
@@ -898,6 +902,7 @@ impl GearSceneBuilder {
 #[derive(Debug)]
 pub struct GearSimulation {
     states: HashMap<String, ShaftState>,
+    shaft_order: Vec<String>,
     driver_shaft: String,
     driver_rpm: f64,
 }
@@ -997,20 +1002,24 @@ impl GearSimulation {
     ///
     /// Total frame count: `⌈duration_secs × fps⌉ + 1`.
     ///
-    /// Shaft angles within each frame are stored in a [`BTreeMap`] so
-    /// iteration order is alphabetical and deterministic.
+    /// Shaft angles within each frame are stored in a `Vec<f64>` in the same
+    /// sorted (alphabetical) order as [`shaft_names`]. Use [`shaft_index`] to
+    /// convert a shaft name to its index once, then index into every frame's
+    /// `shaft_angles` by that index.
     ///
-    /// [`BTreeMap`]: std::collections::BTreeMap
+    /// [`shaft_names`]: GearSimulation::shaft_names
+    /// [`shaft_index`]: GearSimulation::shaft_index
     pub fn frames(&self, fps: f64, duration_secs: f64) -> Vec<SimFrame> {
         let frame_count = (duration_secs * fps).ceil() as usize + 1;
         (0..frame_count)
             .map(|i| {
                 let t = (i as f64 / fps).min(duration_secs);
                 let shaft_angles = self
-                    .states
+                    .shaft_order
                     .iter()
-                    .map(|(s, state)| {
-                        (s.clone(), (state.rpm / 60.0 * t * 360.0).rem_euclid(360.0))
+                    .map(|s| {
+                        let rpm = self.states[s].rpm;
+                        (rpm / 60.0 * t * 360.0).rem_euclid(360.0)
                     })
                     .collect();
                 SimFrame { time_secs: t, shaft_angles }
@@ -1024,6 +1033,29 @@ impl GearSimulation {
     /// scene around just to enumerate shafts.
     pub fn shaft_names(&self) -> Vec<&str> {
         sorted_keys(&self.states)
+    }
+
+    /// Index of `shaft` in the sorted shaft order used by [`SimFrame::shaft_angles`].
+    ///
+    /// Use this to convert a shaft name to a `Vec` index without a string lookup
+    /// on every frame:
+    ///
+    /// ```
+    /// # use for_the_love_of_gears::{gear::Gear, scene::{AnyGear, GearScene}};
+    /// # let scene = GearScene::builder()
+    /// #     .shaft("input",  vec![("a", AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap()))])
+    /// #     .shaft("output", vec![("b", AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap()))])
+    /// #     .mesh("a", "b").driver("input").build().unwrap();
+    /// let sim = scene.run(1000.0).unwrap();
+    /// let idx = sim.shaft_index("output").unwrap();
+    /// for frame in sim.frames(24.0, 1.0) {
+    ///     let _angle = frame.shaft_angles[idx];
+    /// }
+    /// ```
+    ///
+    /// Returns `None` if `shaft` is not a known shaft name.
+    pub fn shaft_index(&self, shaft: &str) -> Option<usize> {
+        self.shaft_order.iter().position(|s| s == shaft)
     }
 
     /// The name of the driver shaft for this simulation.
@@ -1044,16 +1076,18 @@ impl GearSimulation {
 /// Produced by [`GearSimulation::frames`]. Feed `shaft_angles` to your renderer
 /// on each frame tick to animate a gear train.
 ///
-/// `shaft_angles` uses [`BTreeMap`] so keys are always in alphabetical order —
-/// iteration is deterministic regardless of the order shafts were declared.
+/// `shaft_angles` is a `Vec<f64>` in the same sorted (alphabetical) order as
+/// [`GearSimulation::shaft_names`]. Use [`GearSimulation::shaft_index`] to look
+/// up a shaft's index once, then use that index into every frame's `shaft_angles`.
 ///
 /// All angles are in degrees and wrapped to `[0°, 360°)`.
-///
-/// [`BTreeMap`]: std::collections::BTreeMap
 #[derive(Debug, Clone)]
 pub struct SimFrame {
     /// Time of this frame in seconds from the start of the simulation (`t = 0`).
     pub time_secs: f64,
-    /// Angular position of each shaft in degrees `[0°, 360°)`, keyed by shaft name.
-    pub shaft_angles: BTreeMap<String, f64>,
+    /// Angular position of each shaft in degrees `[0°, 360°)`.
+    ///
+    /// Indexed in the same sorted (alphabetical) shaft order as
+    /// [`GearSimulation::shaft_names`] and [`GearSimulation::shaft_index`].
+    pub shaft_angles: Vec<f64>,
 }

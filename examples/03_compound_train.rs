@@ -48,6 +48,11 @@ fn main() {
     println!("  Overall ratio  {:.0}:1", sim.ratio_to("D_output").unwrap());
 
     println!();
+    let i_a = sim.shaft_index("A_input").unwrap();
+    let i_b = sim.shaft_index("B_intermediate").unwrap();
+    let i_c = sim.shaft_index("C_intermediate").unwrap();
+    let i_d = sim.shaft_index("D_output").unwrap();
+
     println!("FRAMES  (10 fps, first 0.5 s)");
     println!(
         "  {:<6}  {:>12}  {:>14}  {:>14}  {:>10}",
@@ -58,10 +63,10 @@ fn main() {
         println!(
             "  {:<6.2}  {:>11.1}°  {:>13.1}°  {:>13.1}°  {:>9.1}°",
             frame.time_secs,
-            frame.shaft_angles["A_input"],
-            frame.shaft_angles["B_intermediate"],
-            frame.shaft_angles["C_intermediate"],
-            frame.shaft_angles["D_output"],
+            frame.shaft_angles[i_a],
+            frame.shaft_angles[i_b],
+            frame.shaft_angles[i_c],
+            frame.shaft_angles[i_d],
         );
     }
 }

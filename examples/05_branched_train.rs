@@ -61,6 +61,10 @@ fn main() {
     println!("  Coolant  ratio: {:.1}:1  (reduction)", sim.ratio_to("coolant_pump").unwrap());
 
     println!();
+    let i_motor   = sim.shaft_index("motor").unwrap();
+    let i_spindle = sim.shaft_index("spindle").unwrap();
+    let i_coolant = sim.shaft_index("coolant_pump").unwrap();
+
     println!("ANIMATION FRAMES  (12 fps, first 0.25 s)");
     println!(
         "  {:<7}  {:>10}  {:>12}  {:>14}",
@@ -71,9 +75,9 @@ fn main() {
         println!(
             "  {:<7.4}  {:>9.1}°  {:>11.1}°  {:>13.1}°",
             frame.time_secs,
-            frame.shaft_angles["motor"],
-            frame.shaft_angles["spindle"],
-            frame.shaft_angles["coolant_pump"],
+            frame.shaft_angles[i_motor],
+            frame.shaft_angles[i_spindle],
+            frame.shaft_angles[i_coolant],
         );
     }
 }

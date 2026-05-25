@@ -82,15 +82,19 @@ fn main() {
     );
     println!("  {}", "─".repeat(56));
 
+    let i_in  = sim.shaft_index("input").unwrap();
+    let i_mid = sim.shaft_index("intermediate").unwrap();
+    let i_out = sim.shaft_index("output").unwrap();
+
     let frames = sim.frames(fps, duration);
     for (i, frame) in frames.iter().enumerate() {
         println!(
             "  {:>5}  {:<7.4}  {:>9.1}°  {:>15.1}°  {:>9.1}°",
             i,
             frame.time_secs,
-            frame.shaft_angles["input"],
-            frame.shaft_angles["intermediate"],
-            frame.shaft_angles["output"],
+            frame.shaft_angles[i_in],
+            frame.shaft_angles[i_mid],
+            frame.shaft_angles[i_out],
         );
     }
 

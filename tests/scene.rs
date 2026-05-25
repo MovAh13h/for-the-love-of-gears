@@ -213,9 +213,11 @@ fn frames_each_has_all_shafts() {
         .unwrap();
 
     let sim = scene.run(1000.0).unwrap();
+    let i_in  = sim.shaft_index("input").unwrap();
+    let i_out = sim.shaft_index("output").unwrap();
     for frame in sim.frames(10.0, 1.0) {
-        assert!(frame.shaft_angles.contains_key("input"));
-        assert!(frame.shaft_angles.contains_key("output"));
+        assert!(frame.shaft_angles.get(i_in).is_some());
+        assert!(frame.shaft_angles.get(i_out).is_some());
     }
 }
 
