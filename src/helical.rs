@@ -674,8 +674,12 @@ impl HelicalGear {
     /// meaning more than two tooth pairs are in contact on average — this is
     /// the primary reason helical gears run quieter than spur gears.
     ///
-    /// Returns `None` if no face width was set on this gear (face width is
-    /// required to compute `εβ`).
+    /// The overlap ratio `εβ` is bounded by the **shorter** of the two face
+    /// widths: axial contact cannot extend beyond the narrower gear. This method
+    /// therefore requires face widths on **both** gears and uses
+    /// `min(b_self, b_other)` as the effective face width.
+    ///
+    /// Returns `None` if either gear is missing a face width.
     ///
     /// ```
     /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
@@ -685,14 +689,24 @@ impl HelicalGear {
     /// let g2 = HelicalGear::builder().module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).face_width(30.0).build().unwrap();
     ///
+    /// // Equal face widths: εγ = εα + εβ (using the common width).
     /// let eg = g1.total_contact_ratio_with(&g2).unwrap();
     /// let ea = g1.transverse_contact_ratio_with(&g2);
     /// let eb = g1.overlap_ratio().unwrap();
     /// assert!((eg - (ea + eb)).abs() < 1e-10);
+    ///
+    /// // Unequal face widths: the narrower gear limits εβ.
+    /// let g3 = HelicalGear::builder().module(2.0).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).face_width(10.0).build().unwrap();
+    /// let eg_narrow = g1.total_contact_ratio_with(&g3).unwrap();
+    /// assert!(eg_narrow < eg); // narrower wheel reduces total contact ratio
     /// ```
     pub fn total_contact_ratio_with(&self, other: &HelicalGear) -> Option<f64> {
-        self.overlap_ratio()
-            .map(|eb| self.transverse_contact_ratio_with(other) + eb)
+        let b1 = self.face_width?;
+        let b2 = other.face_width?;
+        let b_eff = b1.min(b2);
+        let eb = crate::contact_ratio::overlap(b_eff, self.helix_angle, self.module);
+        Some(self.transverse_contact_ratio_with(other) + eb)
     }
 
     // ── Backlash ──────────────────────────────────────────────────────────────
