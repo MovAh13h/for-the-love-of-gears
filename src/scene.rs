@@ -73,7 +73,7 @@
 //! ```
 
 use std::{
-    collections::{HashMap, VecDeque},
+    collections::{BTreeMap, HashMap, VecDeque},
     fmt,
 };
 
@@ -582,10 +582,13 @@ impl GearSimulation {
 }
 
 /// One animation frame: angular positions of all shafts at a single instant in time.
+///
+/// `shaft_angles` is a [`BTreeMap`] so shaft names are always in sorted order —
+/// iteration order is deterministic regardless of how shafts were declared.
 #[derive(Debug, Clone)]
 pub struct SimFrame {
     /// Time of this frame in seconds from the start of the simulation.
     pub time_secs: f64,
     /// Angular position of each shaft in degrees `[0, 360)`, keyed by shaft name.
-    pub shaft_angles: HashMap<String, f64>,
+    pub shaft_angles: BTreeMap<String, f64>,
 }
