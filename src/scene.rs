@@ -85,6 +85,12 @@ fn sorted_keys<V>(map: &HashMap<String, V>) -> Vec<&str> {
     names
 }
 
+#[derive(Debug, Clone, Copy)]
+struct ShaftState {
+    rpm: f64,
+    direction: Direction,
+}
+
 /// A gear that can be mounted in a [`GearScene`] — either spur or helical.
 ///
 /// Use [`AnyGear::from`] to convert a [`Gear`] or [`HelicalGear`] into this type.
@@ -252,8 +258,7 @@ struct ShaftData {
 pub struct GearScene {
     shafts: HashMap<String, ShaftData>,
     driver_shaft: String,
-    relative_rpms: HashMap<String, f64>,
-    directions: HashMap<String, Direction>,
+    states: HashMap<String, ShaftState>,
 }
 
 impl GearScene {
@@ -285,15 +290,16 @@ impl GearScene {
             return Err(GearSceneError::DurationMustBePositive);
         }
 
-        let shaft_rpms = self
-            .relative_rpms
+        let states = self
+            .states
             .iter()
-            .map(|(shaft, &rel)| (shaft.clone(), rel * driver_rpm))
+            .map(|(shaft, s)| {
+                (shaft.clone(), ShaftState { rpm: s.rpm * driver_rpm, direction: s.direction })
+            })
             .collect();
 
         Ok(GearSimulation {
-            shaft_rpms,
-            shaft_directions: self.directions.clone(),
+            states,
             driver_shaft: self.driver_shaft.clone(),
             driver_rpm,
             duration_secs,
@@ -446,38 +452,35 @@ impl GearSceneBuilder {
 
         // --- BFS: compute relative RPMs and directions ---
         // Driver shaft is normalised to relative RPM = 1.0 and Direction::Clockwise.
-        let mut relative_rpms: HashMap<String, f64> = HashMap::new();
-        let mut directions: HashMap<String, Direction> = HashMap::new();
-
-        relative_rpms.insert(driver_shaft.clone(), 1.0);
-        directions.insert(driver_shaft.clone(), Direction::Clockwise);
+        let mut states: HashMap<String, ShaftState> = HashMap::new();
+        states.insert(driver_shaft.clone(), ShaftState { rpm: 1.0, direction: Direction::Clockwise });
 
         let mut queue: VecDeque<String> = VecDeque::new();
         queue.push_back(driver_shaft.clone());
 
         while let Some(current) = queue.pop_front() {
-            let current_rpm = relative_rpms[&current];
-            let current_dir = directions[&current];
+            let current_state = states[&current];
 
-            for (neighbor, ratio) in &shaft_edges[&current] {
-                let neighbor_rpm = current_rpm * ratio;
-                let neighbor_dir = current_dir.flip();
+            if let Some(edges) = shaft_edges.get(&current) {
+                for (neighbor, ratio) in edges {
+                    let neighbor_rpm = current_state.rpm * ratio;
+                    let neighbor_dir = current_state.direction.flip();
 
-                if let Some(&existing) = relative_rpms.get(neighbor) {
-                    if (existing - neighbor_rpm).abs() > crate::MESH_TOLERANCE {
-                        return Err(GearSceneError::OverConstrainedShaft(neighbor.clone()));
+                    if let Some(existing) = states.get(neighbor) {
+                        if (existing.rpm - neighbor_rpm).abs() > crate::MESH_TOLERANCE {
+                            return Err(GearSceneError::OverConstrainedShaft(neighbor.clone()));
+                        }
+                    } else {
+                        states.insert(neighbor.clone(), ShaftState { rpm: neighbor_rpm, direction: neighbor_dir });
+                        queue.push_back(neighbor.clone());
                     }
-                } else {
-                    relative_rpms.insert(neighbor.clone(), neighbor_rpm);
-                    directions.insert(neighbor.clone(), neighbor_dir);
-                    queue.push_back(neighbor.clone());
                 }
             }
         }
 
         // --- Ensure every shaft is reachable ---
         for shaft_name in shafts.keys() {
-            if !relative_rpms.contains_key(shaft_name) {
+            if !states.contains_key(shaft_name) {
                 return Err(GearSceneError::DisconnectedShaft(shaft_name.clone()));
             }
         }
@@ -485,8 +488,7 @@ impl GearSceneBuilder {
         Ok(GearScene {
             shafts,
             driver_shaft,
-            relative_rpms,
-            directions,
+            states,
         })
     }
 }
@@ -498,8 +500,7 @@ impl GearSceneBuilder {
 /// is exact (no numerical integration).
 #[derive(Debug)]
 pub struct GearSimulation {
-    shaft_rpms: HashMap<String, f64>,
-    shaft_directions: HashMap<String, Direction>,
+    states: HashMap<String, ShaftState>,
     driver_shaft: String,
     driver_rpm: f64,
     duration_secs: f64,
@@ -508,13 +509,13 @@ pub struct GearSimulation {
 impl GearSimulation {
     /// RPM of the named shaft, or `None` if the shaft name does not exist.
     pub fn rpm(&self, shaft: &str) -> Option<f64> {
-        self.shaft_rpms.get(shaft).copied()
+        self.states.get(shaft).map(|s| s.rpm)
     }
 
     /// Rotation direction of the named shaft relative to the driver,
     /// or `None` if the shaft name does not exist.
     pub fn direction(&self, shaft: &str) -> Option<Direction> {
-        self.shaft_directions.get(shaft).copied()
+        self.states.get(shaft).map(|s| s.direction)
     }
 
     /// Total number of complete and partial rotations over the simulation duration,
@@ -563,9 +564,9 @@ impl GearSimulation {
             .map(|i| {
                 let t = (i as f64 / fps).min(self.duration_secs);
                 let shaft_angles = self
-                    .shaft_rpms
+                    .states
                     .iter()
-                    .map(|(s, &rpm)| (s.clone(), (rpm / 60.0 * t * 360.0).rem_euclid(360.0)))
+                    .map(|(s, state)| (s.clone(), (state.rpm / 60.0 * t * 360.0).rem_euclid(360.0)))
                     .collect();
                 SimFrame {
                     time_secs: t,
@@ -580,7 +581,7 @@ impl GearSimulation {
     /// Mirrors [`GearScene::shaft_names`] so callers don't need to keep the
     /// scene around just to enumerate shafts.
     pub fn shaft_names(&self) -> Vec<&str> {
-        sorted_keys(&self.shaft_rpms)
+        sorted_keys(&self.states)
     }
 
     /// The name of the driver shaft.
