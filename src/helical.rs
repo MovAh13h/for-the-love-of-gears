@@ -798,6 +798,51 @@ impl HelicalGear {
         let sin_alpha_n = self.normal_pressure_angle.to_radians().sin();
         z_v * sin_alpha_n * sin_alpha_n < 2.0
     }
+
+    /// Returns `true` if the tip of either gear extends past the base circle of
+    /// the other in the transverse plane, causing involute interference.
+    ///
+    /// Helical gear interference is evaluated in the **transverse plane** using
+    /// the transverse pressure angle `αt`:
+    ///
+    /// ```text
+    /// approach limit:  a · sin(αt)
+    /// gear-2 tip reach: √(ra2² − rb2²)
+    /// gear-1 tip reach: √(ra1² − rb1²)
+    ///
+    /// interferes if either tip reach > approach limit
+    /// ```
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let pinion = HelicalGear::builder().module(2.0).teeth(12)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// let wheel = HelicalGear::builder().module(2.0).teeth(60)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+    /// assert!(pinion.interferes_with(&wheel));
+    ///
+    /// let g20 = HelicalGear::builder().module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// let g40 = HelicalGear::builder().module(2.0).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+    /// assert!(!g20.interferes_with(&g40));
+    /// ```
+    pub fn interferes_with(&self, other: &HelicalGear) -> bool {
+        let alpha_t = self.transverse_pressure_angle().to_radians();
+        let a = self.center_distance_to(other);
+        let limit = a * alpha_t.sin();
+
+        let ra1 = self.tip_diameter()   / 2.0;
+        let rb1 = self.base_diameter()  / 2.0;
+        let ra2 = other.tip_diameter()  / 2.0;
+        let rb2 = other.base_diameter() / 2.0;
+
+        let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
+        let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
+
+        reach1 > limit || reach2 > limit
+    }
 }
 
 // ── GearGeometry trait impl ───────────────────────────────────────────────────

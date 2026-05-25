@@ -577,6 +577,51 @@ impl Gear {
         let sin_alpha = self.pressure_angle.to_radians().sin();
         (self.teeth as f64) * sin_alpha * sin_alpha < 2.0
     }
+
+    /// Returns `true` if the tip of either gear in the pair extends past the
+    /// base circle of the other, causing involute interference.
+    ///
+    /// Interference means the tip of one gear contacts the flank of the other
+    /// below the base circle, where the involute does not exist. The test is:
+    ///
+    /// ```text
+    /// approach limit:  a · sin(α)
+    /// gear-2 tip reach: √(ra2² − rb2²)
+    /// gear-1 tip reach: √(ra1² − rb1²)
+    ///
+    /// interferes if either tip reach > approach limit
+    /// ```
+    ///
+    /// This requires both gears to have the same module and pressure angle
+    /// (i.e., `self.can_mesh_with(other)` is true).
+    ///
+    /// ```
+    /// use for_the_love_of_gears::gear::Gear;
+    ///
+    /// let pinion = Gear::builder().module(2.0).teeth(12).build().unwrap();
+    /// let wheel  = Gear::builder().module(2.0).teeth(60).build().unwrap();
+    /// // Large ratio: pinion is small enough to interfere into the wheel root.
+    /// assert!(pinion.interferes_with(&wheel));
+    ///
+    /// let g20 = Gear::builder().module(2.0).teeth(20).build().unwrap();
+    /// let g40 = Gear::builder().module(2.0).teeth(40).build().unwrap();
+    /// assert!(!g20.interferes_with(&g40));
+    /// ```
+    pub fn interferes_with(&self, other: &Gear) -> bool {
+        let alpha = self.pressure_angle.to_radians();
+        let a = self.center_distance_to(other);
+        let limit = a * alpha.sin();
+
+        let ra1 = self.tip_diameter()   / 2.0;
+        let rb1 = self.base_diameter()  / 2.0;
+        let ra2 = other.tip_diameter()  / 2.0;
+        let rb2 = other.base_diameter() / 2.0;
+
+        let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
+        let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
+
+        reach1 > limit || reach2 > limit
+    }
 }
 
 // ── GearGeometry trait impl ───────────────────────────────────────────────────
