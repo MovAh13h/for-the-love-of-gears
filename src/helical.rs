@@ -34,10 +34,10 @@
 //! # Quick start
 //!
 //! ```
-//! use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+//! use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
 //!
 //! let gear = HelicalGear::builder()
-//!     .module(Module::Specified(2.0))
+//!     .module(2.0)
 //!     .teeth(20)
 //!     .helix_angle(20.0)
 //!     .helix_hand(HelixHand::Right)
@@ -49,20 +49,58 @@
 //! ```
 
 use std::f64::consts::PI;
-
-use crate::{
-    backlash::{Backlash, NormalBacklash},
-    center_distance::CenterDistance,
-    contact_ratio::{OverlapRatio, TotalContactRatio, TransverseContactRatio},
-    diameter::{BaseDiameter, ReferenceDiameter, RootDiameter, TipDiameter},
-    gear::GearError,
-    module::Module,
-    pitch::{CircularPitch, DiametralPitch},
-    tooth::{Addendum, Clearance, Dedendum, ToothDepth, ToothThickness},
-};
+use std::fmt;
 
 /// The standard normal pressure angle for helical gears in degrees.
 const DEFAULT_NORMAL_PRESSURE_ANGLE: f64 = 20.0;
+
+/// Errors returned by [`HelicalGearBuilder::build`].
+#[derive(Debug, PartialEq)]
+pub enum HelicalGearError {
+    /// `.module()` was not called.
+    ModuleRequired,
+    /// `.teeth()` was not called.
+    TeethRequired,
+    /// `.helix_angle()` was not called.
+    HelixAngleRequired,
+    /// `.helix_hand()` was not called.
+    HelixHandRequired,
+    /// Module must be greater than zero.
+    ModuleMustBePositive,
+    /// Tooth count must be at least 1.
+    TeethMustBePositive,
+    /// Helix angle must be greater than zero degrees.
+    HelixAngleMustBePositive,
+    /// Helix angle must be less than 90 degrees.
+    HelixAngleMustBeLessThan90,
+    /// Pressure angle must be greater than zero degrees.
+    PressureAngleMustBePositive,
+    /// Face width must be greater than zero.
+    FaceWidthMustBePositive,
+}
+
+impl fmt::Display for HelicalGearError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ModuleRequired => write!(f, "module is required"),
+            Self::TeethRequired => write!(f, "teeth count is required"),
+            Self::HelixAngleRequired => write!(f, "helix angle is required"),
+            Self::HelixHandRequired => write!(f, "helix hand is required"),
+            Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
+            Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
+            Self::HelixAngleMustBePositive => {
+                write!(f, "helix angle must be greater than zero degrees")
+            }
+            Self::HelixAngleMustBeLessThan90 => {
+                write!(f, "helix angle must be less than 90 degrees")
+            }
+            Self::PressureAngleMustBePositive => {
+                write!(f, "pressure angle must be greater than zero degrees")
+            }
+            Self::FaceWidthMustBePositive => write!(f, "face width must be greater than zero"),
+        }
+    }
+}
 
 /// The winding direction of the tooth helix.
 ///
@@ -85,60 +123,10 @@ impl HelixHand {
     }
 }
 
-/// Tooth spacing measured along the rotation axis: `pa = π·mn / sin(ψ)`.
-///
-/// Axial pitch is the distance along the shaft axis between corresponding points
-/// on adjacent teeth. It grows as the helix angle `ψ` decreases — a shallow
-/// helix has a very long axial pitch.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct AxialPitch(f64);
-
-impl AxialPitch {
-    /// Compute axial pitch from normal module and helix angle: `pa = π·mn / sin(ψ)`.
-    pub fn new(normal_module: f64, helix_angle_deg: f64) -> Self {
-        Self(PI * normal_module / helix_angle_deg.to_radians().sin())
-    }
-
-    /// Returns the axial pitch in millimetres.
-    pub fn value(self) -> f64 {
-        self.0
-    }
-}
-
-/// Axial distance for one complete tooth helix revolution: `L = pa · z`.
-///
-/// Lead is how far along the shaft axis a tooth advances in one full rotation
-/// of the gear. It is the axial equivalent of the pitch circle circumference.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Lead(f64);
-
-impl Lead {
-    /// Compute lead from axial pitch and tooth count: `L = pa · z`.
-    pub fn new(axial_pitch: f64, teeth: u32) -> Self {
-        Self(axial_pitch * teeth as f64)
-    }
-
-    /// Returns the lead in millimetres.
-    pub fn value(self) -> f64 {
-        self.0
-    }
-}
-
 /// A fully defined helical gear.
 ///
-/// A helical gear is a cylinder with teeth cut at the **helix angle** `ψ` to the
-/// rotation axis. Because the teeth are angled, multiple teeth are always in mesh
-/// simultaneously — this distributes load, reduces noise, and increases capacity
-/// compared with spur gears.
-///
-/// The trade-off is an **axial thrust force** proportional to `tan(ψ)` that the
-/// shaft bearings must absorb.
-///
-/// # Relationship to spur gears
-///
-/// A spur gear is a helical gear with `ψ = 0°` — teeth parallel to the rotation
-/// axis, no axial force, contact snapping tooth-to-tooth. [`HelicalGear`] requires
-/// `ψ > 0°`; use [`crate::gear::Gear`] for the spur case.
+/// All geometry methods return values in **millimetres** (or degrees / dimensionless
+/// where noted). Build with [`HelicalGear::builder()`].
 ///
 /// # Two modules, one gear
 ///
@@ -152,34 +140,19 @@ impl Lead {
 /// Tooth profile dimensions (addendum, dedendum, depth, clearance) all use `mn`.
 /// Pitch circle and diameter dimensions use `mt`.
 ///
-/// # Parameters
-///
-/// | Parameter | Description | Default |
-/// |---|---|---|
-/// | `module` | Normal module `mn` — tooth size in mm | required |
-/// | `teeth` | Number of teeth | required |
-/// | `helix_angle` | Tooth helix angle `ψ` in degrees (typically 15–30°) | required |
-/// | `helix_hand` | Winding direction — [`HelixHand::Left`] or [`HelixHand::Right`] | required |
-/// | `normal_pressure_angle` | Pressure angle in the normal plane `αn` in degrees | 20° |
-/// | `face_width` | Axial tooth length in mm — needed for load calculations | optional |
-///
 /// # Building a helical gear
 ///
 /// ```
-/// use for_the_love_of_gears::{
-///     helical::{HelicalGear, HelixHand},
-///     module::Module,
-/// };
+/// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
 ///
 /// let gear = HelicalGear::builder()
-///     .module(Module::Specified(2.0))
+///     .module(2.0)
 ///     .teeth(20)
 ///     .helix_angle(20.0)
 ///     .helix_hand(HelixHand::Right)
 ///     .build()
 ///     .unwrap();
 ///
-/// // Derived transverse values
 /// let mt = gear.transverse_module();
 /// let at = gear.transverse_pressure_angle();
 /// ```
@@ -187,26 +160,17 @@ impl Lead {
 /// # Gear pairs
 ///
 /// ```
-/// use for_the_love_of_gears::{
-///     helical::{HelicalGear, HelixHand},
-///     module::Module,
-/// };
+/// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
 ///
 /// let driver = HelicalGear::builder()
-///     .module(Module::Specified(2.0))
-///     .teeth(20)
-///     .helix_angle(20.0)
-///     .helix_hand(HelixHand::Right)
-///     .build()
-///     .unwrap();
+///     .module(2.0).teeth(20)
+///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+///     .build().unwrap();
 ///
 /// let driven = HelicalGear::builder()
-///     .module(Module::Specified(2.0))
-///     .teeth(40)
-///     .helix_angle(20.0)
-///     .helix_hand(HelixHand::Left) // opposite hand required
-///     .build()
-///     .unwrap();
+///     .module(2.0).teeth(40)
+///     .helix_angle(20.0).helix_hand(HelixHand::Left)
+///     .build().unwrap();
 ///
 /// assert!(driver.can_mesh_with(&driven));
 /// assert_eq!(driver.gear_ratio_to(&driven), 2.0);
@@ -214,49 +178,33 @@ impl Lead {
 ///
 /// # Backlash
 ///
-/// Helical gears have two thinning effects to account for. Backlash `jt` is
-/// specified as the circular gap in the **transverse plane**. When projected
-/// into the **normal plane** (where the tooth profile is cut), the thinning
-/// per gear becomes `(jt / 2) · cos(ψ)` because the helix angle angles the
-/// tooth relative to the transverse plane:
+/// Backlash `jt` is the circular gap in the **transverse plane**. When projected
+/// into the **normal plane**, the thinning per gear is `(jt / 2) · cos(ψ)`:
 ///
 /// ```text
-///  transverse thinning per gear:  Δst = jt / 2
-///  normal-plane thinning:         Δsn = Δst · cos(ψ) = (jt / 2) · cos(ψ)
 ///  thinned normal tooth thickness: sn' = πmn / 2 − (jt / 2) · cos(ψ)
-/// ```
-///
-/// Normal backlash has an additional `cos(ψ)` factor compared with a spur gear:
-///
-/// ```text
-///  spur:    jn = jt · cos(α)
-///  helical: jn = jt · cos(αt) · cos(ψ)
+///  normal backlash:                jn  = jt · cos(αt) · cos(ψ)
 /// ```
 ///
 /// ```
-/// use for_the_love_of_gears::{
-///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
-/// };
+/// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
 /// use std::f64::consts::PI;
 ///
 /// let g = HelicalGear::builder()
-///     .module(Module::Specified(2.0)).teeth(20)
+///     .module(2.0).teeth(20)
 ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
 ///     .build().unwrap();
 ///
-/// let jt = Backlash::new(0.08);
-///
-/// // Normal-plane thinned thickness: sn' = πmn/2 − (jt/2)·cos(ψ)
-/// let s_prime = g.thinned_tooth_thickness(jt).value();
+/// let jt = 0.08;
+/// let s_prime = g.thinned_tooth_thickness(jt);
 /// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
 /// assert!((s_prime - expected).abs() < 1e-10);
 ///
-/// // Normal backlash: jn = jt·cos(αt)·cos(ψ)
-/// assert!(g.normal_backlash(jt).value() < jt.value());
+/// assert!(g.normal_backlash(jt) < jt);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct HelicalGear {
-    module: Module,
+    module: f64,
     teeth: u32,
     helix_angle: f64,
     helix_hand: HelixHand,
@@ -267,330 +215,213 @@ pub struct HelicalGear {
 impl HelicalGear {
     /// Start building a [`HelicalGear`]. See [`HelicalGearBuilder`] for all options.
     pub fn builder() -> HelicalGearBuilder {
-        HelicalGearBuilder::new()
+        HelicalGearBuilder::default()
     }
 
-    // --- Inputs ---
+    // ── Inputs ────────────────────────────────────────────────────────────────
 
-    /// The normal module `mn` (tooth size in the normal plane) in mm.
-    pub fn normal_module(&self) -> Module {
+    /// Normal module `mn` (tooth size in the normal plane) in mm.
+    pub fn normal_module(&self) -> f64 {
         self.module
     }
 
-    /// The number of teeth.
+    /// Number of teeth.
     pub fn teeth(&self) -> u32 {
         self.teeth
     }
 
-    /// The helix angle `ψ` in degrees.
+    /// Helix angle `ψ` in degrees.
     pub fn helix_angle(&self) -> f64 {
         self.helix_angle
     }
 
-    /// The winding direction of the helix.
+    /// Winding direction of the helix.
     pub fn helix_hand(&self) -> HelixHand {
         self.helix_hand
     }
 
-    /// The normal pressure angle `αn` in degrees.
+    /// Normal pressure angle `αn` in degrees.
     pub fn normal_pressure_angle(&self) -> f64 {
         self.normal_pressure_angle
     }
 
-    /// The face width in millimetres, if provided.
+    /// Face width in millimetres, if provided.
     pub fn face_width(&self) -> Option<f64> {
         self.face_width
     }
 
-    // --- Derived — transverse plane ---
+    // ── Derived — transverse plane ────────────────────────────────────────────
 
     /// Transverse module in mm: `mt = mn / cos(ψ)`.
     ///
     /// Always larger than the normal module — the helix stretches the apparent
     /// tooth pitch when viewed in the rotation plane.
     pub fn transverse_module(&self) -> f64 {
-        self.module.value() / self.helix_angle.to_radians().cos()
+        self.module / self.helix_angle.to_radians().cos()
     }
 
     /// Transverse pressure angle in degrees: `αt = atan(tan(αn) / cos(ψ))`.
     ///
-    /// The pressure angle as seen in the rotation plane. Always larger than `αn`.
+    /// Always larger than `αn`.
     pub fn transverse_pressure_angle(&self) -> f64 {
         let alpha_n = self.normal_pressure_angle.to_radians();
         let psi = self.helix_angle.to_radians();
         (alpha_n.tan() / psi.cos()).atan().to_degrees()
     }
 
-    // --- Derived geometry (all values in mm unless noted) ---
+    // ── Diameters (mm) ────────────────────────────────────────────────────────
 
     /// Pitch circle diameter in mm: `d = mt · z`.
-    pub fn reference_diameter(&self) -> ReferenceDiameter {
-        ReferenceDiameter::new(self.transverse_module(), self.teeth)
+    pub fn reference_diameter(&self) -> f64 {
+        self.transverse_module() * self.teeth as f64
     }
 
-    /// Outer diameter in mm: `da = mt·z + 2·mn`.
+    /// Tip (outer) diameter in mm: `da = mt·z + 2·mn`.
     ///
     /// Tooth height is governed by the normal module; pitch diameter by the transverse module.
-    pub fn tip_diameter(&self) -> TipDiameter {
-        TipDiameter::from_helical(self.transverse_module(), self.module.value(), self.teeth)
+    pub fn tip_diameter(&self) -> f64 {
+        self.transverse_module() * self.teeth as f64 + 2.0 * self.module
     }
 
     /// Root diameter in mm: `df = mt·z − 2.5·mn`.
-    pub fn root_diameter(&self) -> RootDiameter {
-        RootDiameter::from_helical(self.transverse_module(), self.module.value(), self.teeth)
+    pub fn root_diameter(&self) -> f64 {
+        self.transverse_module() * self.teeth as f64 - 2.5 * self.module
     }
 
     /// Base circle diameter in mm: `db = d · cos(αt)`.
     ///
-    /// Uses the transverse pressure angle because the involute profile is defined
-    /// in the transverse plane.
-    pub fn base_diameter(&self) -> BaseDiameter {
-        BaseDiameter::new(
-            self.transverse_module(),
-            self.teeth,
-            self.transverse_pressure_angle(),
-        )
+    /// Uses the transverse pressure angle because the involute is defined in the transverse plane.
+    pub fn base_diameter(&self) -> f64 {
+        self.reference_diameter() * self.transverse_pressure_angle().to_radians().cos()
     }
 
-    // --- Derived — tooth profile (all use normal module mn) ---
+    // ── Tooth profile (mm) ────────────────────────────────────────────────────
 
-    /// Radial distance from pitch circle to tooth tip in mm: `ha = mn`.
-    pub fn addendum(&self) -> Addendum {
-        Addendum::from_module(self.module.value())
+    /// Radial height above pitch circle in mm: `ha = mn`.
+    pub fn addendum(&self) -> f64 {
+        self.module
     }
 
-    /// Radial distance from pitch circle to tooth root in mm: `hf = 1.25·mn`.
-    pub fn dedendum(&self) -> Dedendum {
-        Dedendum::from_module(self.module.value())
+    /// Radial depth below pitch circle in mm: `hf = 1.25·mn`.
+    pub fn dedendum(&self) -> f64 {
+        1.25 * self.module
     }
 
-    /// Full tooth height in mm: `h = 2.25·mn`.
-    pub fn tooth_depth(&self) -> ToothDepth {
-        ToothDepth::from_module(self.module.value())
+    /// Full tooth height root-to-tip in mm: `h = 2.25·mn`.
+    pub fn tooth_depth(&self) -> f64 {
+        2.25 * self.module
     }
 
-    /// Theoretical tooth thickness in the normal plane in mm: `s = π·mn / 2`.
+    /// Tip-to-root radial clearance in mm: `c = 0.25·mn`.
+    pub fn clearance(&self) -> f64 {
+        0.25 * self.module
+    }
+
+    /// Theoretical tooth thickness in the normal plane in mm: `sn = π·mn / 2`.
     ///
-    /// This is the zero-backlash value. For the thinned thickness used in real
-    /// gear pairs, see [`HelicalGear::thinned_tooth_thickness`].
-    pub fn tooth_thickness(&self) -> ToothThickness {
-        ToothThickness::from_module(self.module.value())
+    /// For the thinned value used in real pairs see [`HelicalGear::thinned_tooth_thickness`].
+    pub fn tooth_thickness(&self) -> f64 {
+        PI * self.module / 2.0
     }
 
-    /// Radial clearance gap in mm: `c = 0.25·mn`.
-    pub fn clearance(&self) -> Clearance {
-        Clearance::from_module(self.module.value())
-    }
-
-    // --- Derived — pitch ---
+    // ── Pitch ─────────────────────────────────────────────────────────────────
 
     /// Arc length between teeth in the normal plane in mm: `pn = π·mn`.
-    pub fn normal_circular_pitch(&self) -> CircularPitch {
-        CircularPitch::from_module(self.module.value())
+    pub fn normal_circular_pitch(&self) -> f64 {
+        PI * self.module
     }
 
     /// Arc length between teeth in the transverse plane in mm: `pt = π·mt`.
-    pub fn transverse_circular_pitch(&self) -> CircularPitch {
-        CircularPitch::from_module(self.transverse_module())
+    pub fn transverse_circular_pitch(&self) -> f64 {
+        PI * self.transverse_module()
     }
 
     /// Teeth per inch of pitch diameter (imperial): `DP = 25.4 / mn`.
-    pub fn diametral_pitch(&self) -> DiametralPitch {
-        DiametralPitch::from_module(self.module.value())
+    pub fn diametral_pitch(&self) -> f64 {
+        25.4 / self.module
     }
 
     /// Tooth spacing along the rotation axis in mm: `pa = π·mn / sin(ψ)`.
-    pub fn axial_pitch(&self) -> AxialPitch {
-        AxialPitch::new(self.module.value(), self.helix_angle)
+    pub fn axial_pitch(&self) -> f64 {
+        PI * self.module / self.helix_angle.to_radians().sin()
     }
 
     /// Axial distance for one full helix revolution in mm: `L = pa · z`.
-    pub fn lead(&self) -> Lead {
-        Lead::new(self.axial_pitch().value(), self.teeth)
+    pub fn lead(&self) -> f64 {
+        self.axial_pitch() * self.teeth as f64
     }
 
-    // --- Gear pair ---
+    // ── Gear pair ─────────────────────────────────────────────────────────────
 
-    /// Returns `true` if this gear can mesh with `other` on parallel shafts.
+    /// `true` if this gear can mesh with `other` on parallel shafts.
     ///
-    /// Requires equal normal modules, equal helix angle magnitudes, and opposite helix hands.
+    /// Requires equal normal modules, equal normal pressure angles, equal helix angle magnitudes,
+    /// and opposite helix hands.
     ///
     /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
     ///
     /// let g1 = HelicalGear::builder()
-    ///     .module(Module::Specified(2.0)).teeth(20)
+    ///     .module(2.0).teeth(20)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
     ///     .build().unwrap();
     ///
     /// let g2 = HelicalGear::builder()
-    ///     .module(Module::Specified(2.0)).teeth(40)
+    ///     .module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left)
     ///     .build().unwrap();
     ///
     /// assert!(g1.can_mesh_with(&g2));
+    ///
+    /// // Same-hand gears do not mesh
+    /// let g3 = HelicalGear::builder()
+    ///     .module(2.0).teeth(30)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// assert!(!g1.can_mesh_with(&g3));
+    ///
+    /// // Different pressure angle gears do not mesh
+    /// let g4 = HelicalGear::builder()
+    ///     .module(2.0).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left)
+    ///     .normal_pressure_angle(14.5)
+    ///     .build().unwrap();
+    /// assert!(!g1.can_mesh_with(&g4));
     /// ```
     pub fn can_mesh_with(&self, other: &HelicalGear) -> bool {
-        let same_module =
-            (self.module.value() - other.module.value()).abs() < crate::MESH_TOLERANCE;
+        let same_module = (self.module - other.module).abs() < crate::MESH_TOLERANCE;
+        let same_pressure_angle = (self.normal_pressure_angle - other.normal_pressure_angle).abs()
+            < crate::MESH_TOLERANCE;
         let same_angle = (self.helix_angle - other.helix_angle).abs() < crate::MESH_TOLERANCE;
         let opposite_hand = other.helix_hand == self.helix_hand.opposite();
-        same_module && same_angle && opposite_hand
+        same_module && same_pressure_angle && same_angle && opposite_hand
     }
 
     /// Centre distance between the two gear axes in mm: `a = (d1 + d2) / 2`.
     ///
     /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-    /// let g1 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    /// let g1 = HelicalGear::builder().module(2.0).teeth(20)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
-    /// let g2 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
+    /// let g2 = HelicalGear::builder().module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    /// let a = g1.center_distance_to(&g2).value();
-    /// let expected = (g1.reference_diameter().value() + g2.reference_diameter().value()) / 2.0;
+    /// let a = g1.center_distance_to(&g2);
+    /// let expected = (g1.reference_diameter() + g2.reference_diameter()) / 2.0;
     /// assert!((a - expected).abs() < 1e-10);
     /// ```
-    pub fn center_distance_to(&self, other: &HelicalGear) -> CenterDistance {
-        CenterDistance::from_reference_diameters(
-            self.reference_diameter().value(),
-            other.reference_diameter().value(),
-        )
+    pub fn center_distance_to(&self, other: &HelicalGear) -> f64 {
+        (self.reference_diameter() + other.reference_diameter()) / 2.0
     }
 
-    /// Normal-plane tooth thickness after applying backlash: `sn' = πmn / 2 − (jt / 2) · cos(ψ)`.
+    /// Speed ratio to `other`: `i = z_other / z_self`.
     ///
-    /// Backlash `jt` is a pair-level circular value. The thinning `jt / 2` is
-    /// applied in the transverse plane and projected into the normal plane via
-    /// `cos(ψ)`, giving the thinned normal tooth thickness.
+    /// Greater than 1 → `other` is slower (reduction). Less than 1 → faster (step-up).
     ///
     /// ```
-    /// use for_the_love_of_gears::{
-    ///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
-    /// };
-    /// use std::f64::consts::PI;
-    ///
-    /// let g = HelicalGear::builder()
-    ///     .module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
-    ///     .build().unwrap();
-    /// let jt = Backlash::new(0.08);
-    /// let s_prime = g.thinned_tooth_thickness(jt).value();
-    /// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
-    /// assert!((s_prime - expected).abs() < 1e-10);
-    /// ```
-    pub fn thinned_tooth_thickness(&self, backlash: Backlash) -> ToothThickness {
-        ToothThickness::new(crate::backlash::thinned_thickness_helical(
-            self.module.value(),
-            backlash,
-            self.helix_angle,
-        ))
-    }
-
-    /// Normal backlash from circular backlash: `jn = jt · cos(αt) · cos(ψ)`.
-    ///
-    /// Normal backlash is measured perpendicular to the helical tooth flank.
-    /// It is smaller than the circular backlash `jt` due to both the pressure
-    /// angle and the helix angle.
-    ///
-    /// ```
-    /// use for_the_love_of_gears::{
-    ///     backlash::Backlash, helical::{HelicalGear, HelixHand}, module::Module,
-    /// };
-    ///
-    /// let g = HelicalGear::builder()
-    ///     .module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
-    ///     .build().unwrap();
-    /// let jt = Backlash::new(0.08);
-    /// assert!(g.normal_backlash(jt).value() < jt.value());
-    /// ```
-    pub fn normal_backlash(&self, backlash: Backlash) -> NormalBacklash {
-        NormalBacklash::from_helical(backlash, self.transverse_pressure_angle(), self.helix_angle)
-    }
-
-    /// Transverse contact ratio between this gear and `other`: `εα`.
-    ///
-    /// Computed in the transverse plane using the transverse pressure angle and
-    /// transverse base pitch. For the total contact ratio (including the axial
-    /// overlap contribution), use [`HelicalGear::total_contact_ratio_with`].
-    ///
-    /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-    ///
-    /// let g1 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    /// let driver = HelicalGear::builder().module(2.0).teeth(20)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
-    /// let g2 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    /// assert!(g1.transverse_contact_ratio_with(&g2).value() > 1.0);
-    /// ```
-    pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> TransverseContactRatio {
-        crate::contact_ratio::transverse_contact_ratio(
-            self.tip_diameter().value() / 2.0,
-            self.base_diameter().value() / 2.0,
-            other.tip_diameter().value() / 2.0,
-            other.base_diameter().value() / 2.0,
-            self.center_distance_to(other).value(),
-            self.transverse_pressure_angle(),
-            self.transverse_module(),
-        )
-    }
-
-    /// Overlap ratio from the helical tooth sweep: `εβ = b·sin(ψ) / (π·mn)`.
-    ///
-    /// Returns `None` if no face width was set on this gear — face width is
-    /// required to compute the axial overlap.
-    ///
-    /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-    ///
-    /// let g = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
-    ///     .face_width(30.0)
-    ///     .build().unwrap();
-    /// assert!(g.overlap_ratio().is_some());
-    ///
-    /// let g_no_fw = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
-    /// assert!(g_no_fw.overlap_ratio().is_none());
-    /// ```
-    pub fn overlap_ratio(&self) -> Option<OverlapRatio> {
-        self.face_width
-            .map(|b| OverlapRatio::new(b, self.helix_angle, self.module.value()))
-    }
-
-    /// Total contact ratio: `εγ = εα + εβ`.
-    ///
-    /// Returns `None` if no face width was set on this gear, since the overlap
-    /// ratio `εβ` cannot be computed without it.
-    ///
-    /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-    ///
-    /// let g1 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).face_width(30.0).build().unwrap();
-    /// let g2 = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).face_width(30.0).build().unwrap();
-    ///
-    /// let eg = g1.total_contact_ratio_with(&g2).unwrap();
-    /// let ea = g1.transverse_contact_ratio_with(&g2);
-    /// let eb = g1.overlap_ratio().unwrap();
-    /// assert!((eg.value() - (ea.value() + eb.value())).abs() < 1e-10);
-    /// ```
-    pub fn total_contact_ratio_with(&self, other: &HelicalGear) -> Option<TotalContactRatio> {
-        self.overlap_ratio()
-            .map(|eb| TotalContactRatio::new(self.transverse_contact_ratio_with(other), eb))
-    }
-
-    /// Speed ratio from this gear to `other`: `i = z_other / z_self`.
-    ///
-    /// A ratio greater than 1.0 means `other` rotates slower (speed reduction).
-    /// A ratio less than 1.0 means `other` rotates faster (speed increase).
-    ///
-    /// ```
-    /// use for_the_love_of_gears::{helical::{HelicalGear, HelixHand}, module::Module};
-    /// let driver = HelicalGear::builder().module(Module::Specified(2.0)).teeth(20)
-    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
-    /// let driven = HelicalGear::builder().module(Module::Specified(2.0)).teeth(40)
+    /// let driven = HelicalGear::builder().module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
     /// assert_eq!(driver.gear_ratio_to(&driven), 2.0);
     /// assert_eq!(driven.gear_ratio_to(&driver), 0.5);
@@ -598,15 +429,139 @@ impl HelicalGear {
     pub fn gear_ratio_to(&self, other: &HelicalGear) -> f64 {
         other.teeth as f64 / self.teeth as f64
     }
+
+    /// Transverse contact ratio `εα` between this gear and `other`.
+    ///
+    /// Computed in the transverse plane. For the total contact ratio (including
+    /// axial overlap), use [`HelicalGear::total_contact_ratio_with`].
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let g1 = HelicalGear::builder().module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// let g2 = HelicalGear::builder().module(2.0).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+    /// assert!(g1.transverse_contact_ratio_with(&g2) > 1.0);
+    /// ```
+    pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> f64 {
+        crate::contact_ratio::helical_transverse(
+            self.tip_diameter() / 2.0,
+            self.base_diameter() / 2.0,
+            other.tip_diameter() / 2.0,
+            other.base_diameter() / 2.0,
+            self.center_distance_to(other),
+            self.transverse_pressure_angle(),
+            self.transverse_module(),
+        )
+    }
+
+    /// Overlap ratio from the helical tooth sweep: `εβ = b·sin(ψ) / (π·mn)`.
+    ///
+    /// Returns `None` if no face width was set — face width is required to
+    /// compute the axial overlap.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let g = HelicalGear::builder().module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .face_width(30.0).build().unwrap();
+    /// assert!(g.overlap_ratio().is_some());
+    ///
+    /// let g_no_fw = HelicalGear::builder().module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+    /// assert!(g_no_fw.overlap_ratio().is_none());
+    /// ```
+    pub fn overlap_ratio(&self) -> Option<f64> {
+        self.face_width
+            .map(|b| crate::contact_ratio::overlap(b, self.helix_angle, self.module))
+    }
+
+    /// Total contact ratio: `εγ = εα + εβ`.
+    ///
+    /// Returns `None` if no face width was set on this gear.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let g1 = HelicalGear::builder().module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right).face_width(30.0).build().unwrap();
+    /// let g2 = HelicalGear::builder().module(2.0).teeth(40)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left).face_width(30.0).build().unwrap();
+    ///
+    /// let eg = g1.total_contact_ratio_with(&g2).unwrap();
+    /// let ea = g1.transverse_contact_ratio_with(&g2);
+    /// let eb = g1.overlap_ratio().unwrap();
+    /// assert!((eg - (ea + eb)).abs() < 1e-10);
+    /// ```
+    pub fn total_contact_ratio_with(&self, other: &HelicalGear) -> Option<f64> {
+        self.overlap_ratio()
+            .map(|eb| self.transverse_contact_ratio_with(other) + eb)
+    }
+
+    // ── Backlash ──────────────────────────────────────────────────────────────
+
+    /// Normal-plane tooth thickness after applying backlash `jt` (mm):
+    /// `sn' = πmn / 2 − (jt / 2) · cos(ψ)`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    /// use std::f64::consts::PI;
+    ///
+    /// let g = HelicalGear::builder()
+    ///     .module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// let s = g.thinned_tooth_thickness(0.08);
+    /// let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
+    /// assert!((s - expected).abs() < 1e-10);
+    /// ```
+    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+        PI * self.module / 2.0 - backlash_mm / 2.0 * self.helix_angle.to_radians().cos()
+    }
+
+    /// Normal backlash from circular backlash `jt` (mm): `jn = jt · cos(αt) · cos(ψ)`.
+    ///
+    /// Smaller than `jt` due to both pressure angle and helix angle projections.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let g = HelicalGear::builder()
+    ///     .module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// assert!(g.normal_backlash(0.08) < 0.08);
+    /// ```
+    pub fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+        backlash_mm
+            * self.transverse_pressure_angle().to_radians().cos()
+            * self.helix_angle.to_radians().cos()
+    }
 }
 
-/// Builder for [`HelicalGear`]. Obtain one via [`HelicalGear::builder()`].
+/// Builder for [`HelicalGear`]. Obtain via [`HelicalGear::builder()`].
 ///
 /// `module`, `teeth`, `helix_angle`, and `helix_hand` are required.
 /// `normal_pressure_angle` defaults to `20.0°`. `face_width` is optional.
+///
+/// ```
+/// use for_the_love_of_gears::helical::{HelicalGear, HelicalGearError, HelixHand};
+///
+/// assert_eq!(
+///     HelicalGear::builder().module(2.0).teeth(20).helix_angle(20.0).build(),
+///     Err(HelicalGearError::HelixHandRequired)
+/// );
+/// assert_eq!(
+///     HelicalGear::builder().module(0.0).teeth(20).helix_angle(20.0)
+///         .helix_hand(HelixHand::Right).build(),
+///     Err(HelicalGearError::ModuleMustBePositive)
+/// );
+/// ```
 #[derive(Debug, Default)]
 pub struct HelicalGearBuilder {
-    module: Option<Module>,
+    module: Option<f64>,
     teeth: Option<u32>,
     helix_angle: Option<f64>,
     helix_hand: Option<HelixHand>,
@@ -615,23 +570,19 @@ pub struct HelicalGearBuilder {
 }
 
 impl HelicalGearBuilder {
-    fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the normal module `mn` (tooth size, in mm).
-    pub fn module(mut self, module: Module) -> Self {
-        self.module = Some(module);
+    /// Set the normal module `mn` (tooth size) in mm.
+    pub fn module(mut self, m: f64) -> Self {
+        self.module = Some(m);
         self
     }
 
     /// Set the number of teeth.
-    pub fn teeth(mut self, teeth: u32) -> Self {
-        self.teeth = Some(teeth);
+    pub fn teeth(mut self, z: u32) -> Self {
+        self.teeth = Some(z);
         self
     }
 
-    /// Set the helix angle `ψ` in degrees. Must be in the range `(0°, 90°)`.
+    /// Set the helix angle `ψ` in degrees. Must be in `(0°, 90°)`.
     ///
     /// `ψ = 0°` is a spur gear — use [`crate::gear::Gear`] for that case.
     pub fn helix_angle(mut self, degrees: f64) -> Self {
@@ -645,62 +596,46 @@ impl HelicalGearBuilder {
         self
     }
 
-    /// Set the normal pressure angle `αn` in degrees. Defaults to `20.0°` if not called.
+    /// Set the normal pressure angle `αn` in degrees. Defaults to `20.0°`.
     pub fn normal_pressure_angle(mut self, degrees: f64) -> Self {
         self.normal_pressure_angle = Some(degrees);
         self
     }
 
-    /// Set the face width in millimetres.
+    /// Set the face width in millimetres. Required for overlap and total contact ratios.
     pub fn face_width(mut self, mm: f64) -> Self {
         self.face_width = Some(mm);
         self
     }
 
     /// Build the [`HelicalGear`], validating all inputs.
-    ///
-    /// # Errors
-    ///
-    /// | Error | Cause |
-    /// |---|---|
-    /// | [`GearError::ModuleRequired`] | `.module()` was not called |
-    /// | [`GearError::TeethRequired`] | `.teeth()` was not called |
-    /// | [`GearError::HelixAngleRequired`] | `.helix_angle()` was not called |
-    /// | [`GearError::HelixHandRequired`] | `.helix_hand()` was not called |
-    /// | [`GearError::ModuleMustBePositive`] | module value ≤ 0 |
-    /// | [`GearError::TeethMustBePositive`] | teeth = 0 |
-    /// | [`GearError::HelixAngleMustBePositive`] | helix angle ≤ 0° |
-    /// | [`GearError::HelixAngleMustBeLessThan90`] | helix angle ≥ 90° |
-    /// | [`GearError::PressureAngleMustBePositive`] | normal pressure angle ≤ 0° |
-    /// | [`GearError::FaceWidthMustBePositive`] | face width ≤ 0 mm |
-    pub fn build(self) -> Result<HelicalGear, GearError> {
-        let module = self.module.ok_or(GearError::ModuleRequired)?;
-        let teeth = self.teeth.ok_or(GearError::TeethRequired)?;
-        let helix_angle = self.helix_angle.ok_or(GearError::HelixAngleRequired)?;
-        let helix_hand = self.helix_hand.ok_or(GearError::HelixHandRequired)?;
+    pub fn build(self) -> Result<HelicalGear, HelicalGearError> {
+        let module = self.module.ok_or(HelicalGearError::ModuleRequired)?;
+        let teeth = self.teeth.ok_or(HelicalGearError::TeethRequired)?;
+        let helix_angle = self.helix_angle.ok_or(HelicalGearError::HelixAngleRequired)?;
+        let helix_hand = self.helix_hand.ok_or(HelicalGearError::HelixHandRequired)?;
 
-        if module.value() <= 0.0 {
-            return Err(GearError::ModuleMustBePositive);
+        if module <= 0.0 {
+            return Err(HelicalGearError::ModuleMustBePositive);
         }
         if teeth == 0 {
-            return Err(GearError::TeethMustBePositive);
+            return Err(HelicalGearError::TeethMustBePositive);
         }
         if helix_angle <= 0.0 {
-            return Err(GearError::HelixAngleMustBePositive);
+            return Err(HelicalGearError::HelixAngleMustBePositive);
         }
         if helix_angle >= 90.0 {
-            return Err(GearError::HelixAngleMustBeLessThan90);
+            return Err(HelicalGearError::HelixAngleMustBeLessThan90);
         }
 
-        let normal_pressure_angle = self
-            .normal_pressure_angle
-            .unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE);
+        let normal_pressure_angle =
+            self.normal_pressure_angle.unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE);
         if normal_pressure_angle <= 0.0 {
-            return Err(GearError::PressureAngleMustBePositive);
+            return Err(HelicalGearError::PressureAngleMustBePositive);
         }
 
         if self.face_width.is_some_and(|fw| fw <= 0.0) {
-            return Err(GearError::FaceWidthMustBePositive);
+            return Err(HelicalGearError::FaceWidthMustBePositive);
         }
 
         Ok(HelicalGear {
