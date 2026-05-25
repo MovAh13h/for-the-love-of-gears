@@ -122,6 +122,13 @@ impl Gear {
         self.module
     }
 
+    /// Normal module in mm — alias for [`module`] for symmetry with `HelicalGear`.
+    ///
+    /// [`module`]: Gear::module
+    pub fn normal_module(&self) -> f64 {
+        self.module
+    }
+
     /// Number of teeth.
     pub fn teeth(&self) -> u32 {
         self.teeth
@@ -129,6 +136,13 @@ impl Gear {
 
     /// Pressure angle in degrees. Default is `20.0°` (ISO standard).
     pub fn pressure_angle(&self) -> f64 {
+        self.pressure_angle
+    }
+
+    /// Normal pressure angle in degrees — alias for [`pressure_angle`] for symmetry with `HelicalGear`.
+    ///
+    /// [`pressure_angle`]: Gear::pressure_angle
+    pub fn normal_pressure_angle(&self) -> f64 {
         self.pressure_angle
     }
 
@@ -190,6 +204,13 @@ impl Gear {
     /// Arc length between adjacent teeth along pitch circle in mm: `p = πm`.
     pub fn circular_pitch(&self) -> f64 {
         PI * self.module
+    }
+
+    /// Normal circular pitch in mm — alias for [`circular_pitch`] for symmetry with `HelicalGear`.
+    ///
+    /// [`circular_pitch`]: Gear::circular_pitch
+    pub fn normal_circular_pitch(&self) -> f64 {
+        self.circular_pitch()
     }
 
     /// Teeth per inch of pitch diameter (imperial): `DP = 25.4 / m`.
@@ -272,6 +293,14 @@ impl Gear {
             self.pressure_angle,
             self.module,
         )
+    }
+
+    /// Transverse contact ratio `εα` with `other` — alias for [`contact_ratio_with`] for
+    /// symmetry with `HelicalGear::transverse_contact_ratio_with`.
+    ///
+    /// [`contact_ratio_with`]: Gear::contact_ratio_with
+    pub fn transverse_contact_ratio_with(&self, other: &Gear) -> f64 {
+        self.contact_ratio_with(other)
     }
 
     // ── Backlash ──────────────────────────────────────────────────────────────
