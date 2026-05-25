@@ -574,6 +574,16 @@ impl GearSimulation {
             .collect()
     }
 
+    /// The names of all shafts in this simulation, in sorted order.
+    ///
+    /// Mirrors [`GearScene::shaft_names`] so callers don't need to keep the
+    /// scene around just to enumerate shafts.
+    pub fn shaft_names(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.shaft_rpms.keys().map(|s| s.as_str()).collect();
+        names.sort();
+        names
+    }
+
     /// The name of the driver shaft.
     pub fn driver_shaft(&self) -> &str {
         &self.driver_shaft
