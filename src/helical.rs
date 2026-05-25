@@ -51,6 +51,8 @@
 use std::f64::consts::PI;
 use std::fmt;
 
+use crate::traits::GearGeometry;
+
 /// The standard normal pressure angle for helical gears in degrees.
 const DEFAULT_NORMAL_PRESSURE_ANGLE: f64 = 20.0;
 
@@ -552,6 +554,60 @@ impl HelicalGear {
         backlash_mm
             * self.transverse_pressure_angle().to_radians().cos()
             * self.helix_angle.to_radians().cos()
+    }
+}
+
+impl GearGeometry for HelicalGear {
+    fn teeth(&self) -> u32 {
+        self.teeth
+    }
+
+    fn reference_diameter(&self) -> f64 {
+        self.reference_diameter()
+    }
+
+    fn tip_diameter(&self) -> f64 {
+        self.tip_diameter()
+    }
+
+    fn root_diameter(&self) -> f64 {
+        self.root_diameter()
+    }
+
+    fn base_diameter(&self) -> f64 {
+        self.base_diameter()
+    }
+
+    fn addendum(&self) -> f64 {
+        self.addendum()
+    }
+
+    fn dedendum(&self) -> f64 {
+        self.dedendum()
+    }
+
+    fn tooth_depth(&self) -> f64 {
+        self.tooth_depth()
+    }
+
+    fn clearance(&self) -> f64 {
+        self.clearance()
+    }
+
+    fn tooth_thickness(&self) -> f64 {
+        self.tooth_thickness()
+    }
+
+    fn diametral_pitch(&self) -> f64 {
+        self.diametral_pitch()
+    }
+
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+        self.thinned_tooth_thickness(backlash_mm)
+    }
+
+    fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+        self.normal_backlash(backlash_mm)
     }
 }
 

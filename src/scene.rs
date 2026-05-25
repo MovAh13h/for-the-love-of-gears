@@ -74,7 +74,7 @@ use std::{
     fmt,
 };
 
-use crate::{gear::Gear, helical::HelicalGear};
+use crate::{gear::Gear, helical::HelicalGear, traits::GearGeometry};
 
 fn sorted_keys<V>(map: &HashMap<String, V>) -> Vec<&str> {
     let mut names: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
@@ -134,6 +134,99 @@ impl From<Gear> for AnyGear {
 impl From<HelicalGear> for AnyGear {
     fn from(g: HelicalGear) -> Self {
         Self::Helical(g)
+    }
+}
+
+impl GearGeometry for AnyGear {
+    fn teeth(&self) -> u32 {
+        match self {
+            Self::Spur(g) => g.teeth(),
+            Self::Helical(g) => g.teeth(),
+        }
+    }
+
+    fn reference_diameter(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.reference_diameter(),
+            Self::Helical(g) => g.reference_diameter(),
+        }
+    }
+
+    fn tip_diameter(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.tip_diameter(),
+            Self::Helical(g) => g.tip_diameter(),
+        }
+    }
+
+    fn root_diameter(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.root_diameter(),
+            Self::Helical(g) => g.root_diameter(),
+        }
+    }
+
+    fn base_diameter(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.base_diameter(),
+            Self::Helical(g) => g.base_diameter(),
+        }
+    }
+
+    fn addendum(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.addendum(),
+            Self::Helical(g) => g.addendum(),
+        }
+    }
+
+    fn dedendum(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.dedendum(),
+            Self::Helical(g) => g.dedendum(),
+        }
+    }
+
+    fn tooth_depth(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.tooth_depth(),
+            Self::Helical(g) => g.tooth_depth(),
+        }
+    }
+
+    fn clearance(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.clearance(),
+            Self::Helical(g) => g.clearance(),
+        }
+    }
+
+    fn tooth_thickness(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.tooth_thickness(),
+            Self::Helical(g) => g.tooth_thickness(),
+        }
+    }
+
+    fn diametral_pitch(&self) -> f64 {
+        match self {
+            Self::Spur(g) => g.diametral_pitch(),
+            Self::Helical(g) => g.diametral_pitch(),
+        }
+    }
+
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+        match self {
+            Self::Spur(g) => g.thinned_tooth_thickness(backlash_mm),
+            Self::Helical(g) => g.thinned_tooth_thickness(backlash_mm),
+        }
+    }
+
+    fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+        match self {
+            Self::Spur(g) => g.normal_backlash(backlash_mm),
+            Self::Helical(g) => g.normal_backlash(backlash_mm),
+        }
     }
 }
 
