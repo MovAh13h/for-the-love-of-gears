@@ -491,6 +491,7 @@ pub struct GearScene {
     shafts: HashMap<String, Vec<(String, AnyGear)>>,
     meshes: Vec<(String, String)>,
     shaft_order: Vec<String>,
+    gear_map: HashMap<String, (String, usize)>,
 }
 
 impl GearScene {
@@ -569,12 +570,8 @@ impl GearScene {
     ///
     /// Returns `None` if no gear with that name exists in the scene.
     pub fn gear(&self, gear_name: &str) -> Option<&AnyGear> {
-        for gears in self.shafts.values() {
-            if let Some((_, g)) = gears.iter().find(|(n, _)| n == gear_name) {
-                return Some(g);
-            }
-        }
-        None
+        let (shaft, idx) = self.gear_map.get(gear_name)?;
+        self.shafts.get(shaft)?.get(*idx).map(|(_, g)| g)
     }
 
     /// Index of `shaft` in the sorted shaft order used by [`SimFrame::shaft_angles`].
@@ -719,13 +716,15 @@ impl GearSceneBuilder {
         // --- Build maps ---
         let mut shafts: HashMap<String, ShaftData> = HashMap::new();
         let mut gear_to_shaft: HashMap<String, String> = HashMap::new();
+        let mut gear_map: HashMap<String, (String, usize)> = HashMap::new();
 
         for (shaft_name, gears) in self.shafts {
-            for (gear_name, _) in &gears {
+            for (idx, (gear_name, _)) in gears.iter().enumerate() {
                 if gear_to_shaft.contains_key(gear_name) {
                     return Err(GearSceneError::DuplicateGearName(gear_name.clone()));
                 }
                 gear_to_shaft.insert(gear_name.clone(), shaft_name.clone());
+                gear_map.insert(gear_name.clone(), (shaft_name.clone(), idx));
             }
             shafts.insert(shaft_name, ShaftData { gears });
         }
@@ -875,6 +874,7 @@ impl GearSceneBuilder {
             shafts: shafts_data,
             meshes: self.meshes,
             shaft_order,
+            gear_map,
         })
     }
 }
