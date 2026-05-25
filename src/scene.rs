@@ -79,6 +79,12 @@ use std::{
 
 use crate::{gear::Gear, helical::HelicalGear};
 
+fn sorted_keys<V>(map: &HashMap<String, V>) -> Vec<&str> {
+    let mut names: Vec<&str> = map.keys().map(|s| s.as_str()).collect();
+    names.sort();
+    names
+}
+
 /// A gear that can be mounted in a [`GearScene`] — either spur or helical.
 ///
 /// Use [`AnyGear::from`] to convert a [`Gear`] or [`HelicalGear`] into this type.
@@ -294,11 +300,9 @@ impl GearScene {
         })
     }
 
-    /// The names of all shafts in this scene.
+    /// The names of all shafts in this scene, in sorted order.
     pub fn shaft_names(&self) -> Vec<&str> {
-        let mut names: Vec<&str> = self.shafts.keys().map(|s| s.as_str()).collect();
-        names.sort();
-        names
+        sorted_keys(&self.shafts)
     }
 }
 
@@ -576,9 +580,7 @@ impl GearSimulation {
     /// Mirrors [`GearScene::shaft_names`] so callers don't need to keep the
     /// scene around just to enumerate shafts.
     pub fn shaft_names(&self) -> Vec<&str> {
-        let mut names: Vec<&str> = self.shaft_rpms.keys().map(|s| s.as_str()).collect();
-        names.sort();
-        names
+        sorted_keys(&self.shaft_rpms)
     }
 
     /// The name of the driver shaft.
