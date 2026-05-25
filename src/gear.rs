@@ -664,15 +664,15 @@ impl GearBuilder {
 
     /// Build the [`Gear`], validating all inputs.
     pub fn build(self) -> Result<Gear, GearError> {
-        if let Some(m) = self.module {
-            if m <= 0.0 {
-                return Err(GearError::ModuleMustBePositive);
-            }
+        if let Some(m) = self.module
+            && m <= 0.0
+        {
+            return Err(GearError::ModuleMustBePositive);
         }
-        if let Some(pa) = self.pressure_angle {
-            if pa <= 0.0 {
-                return Err(GearError::PressureAngleMustBePositive);
-            }
+        if let Some(pa) = self.pressure_angle
+            && pa <= 0.0
+        {
+            return Err(GearError::PressureAngleMustBePositive);
         }
 
         let module = self.module.ok_or(GearError::ModuleRequired)?;

@@ -889,10 +889,10 @@ impl HelicalGearBuilder {
 
     /// Build the [`HelicalGear`], validating all inputs.
     pub fn build(self) -> Result<HelicalGear, HelicalGearError> {
-        if let Some(m) = self.module {
-            if m <= 0.0 {
-                return Err(HelicalGearError::ModuleMustBePositive);
-            }
+        if let Some(m) = self.module
+            && m <= 0.0
+        {
+            return Err(HelicalGearError::ModuleMustBePositive);
         }
         if let Some(ha) = self.helix_angle {
             if ha <= 0.0 {
@@ -902,15 +902,15 @@ impl HelicalGearBuilder {
                 return Err(HelicalGearError::HelixAngleMustBeLessThan90);
             }
         }
-        if let Some(pa) = self.normal_pressure_angle {
-            if pa <= 0.0 {
-                return Err(HelicalGearError::PressureAngleMustBePositive);
-            }
+        if let Some(pa) = self.normal_pressure_angle
+            && pa <= 0.0
+        {
+            return Err(HelicalGearError::PressureAngleMustBePositive);
         }
-        if let Some(fw) = self.face_width {
-            if fw <= 0.0 {
-                return Err(HelicalGearError::FaceWidthMustBePositive);
-            }
+        if let Some(fw) = self.face_width
+            && fw <= 0.0
+        {
+            return Err(HelicalGearError::FaceWidthMustBePositive);
         }
 
         let module = self.module.ok_or(HelicalGearError::ModuleRequired)?;
