@@ -395,6 +395,18 @@ pub enum GearSceneError {
         gear_b: String,
     },
 
+    /// The same gear pair was declared as a mesh more than once.
+    ///
+    /// Each physical contact between two gears must be declared exactly once
+    /// via `.mesh()`. Repeating a declaration is a logical error and is
+    /// rejected to avoid duplicate edges in the kinematic graph.
+    DuplicateMesh {
+        /// Name of the first gear in the duplicate mesh.
+        gear_a: String,
+        /// Name of the second gear in the duplicate mesh.
+        gear_b: String,
+    },
+
     /// A shaft has no mesh connections leading back to the driver shaft.
     ///
     /// The string is the name of the disconnected shaft. Every shaft in the
@@ -441,6 +453,10 @@ impl fmt::Display for GearSceneError {
             Self::MeshParameterMismatch { gear_a, gear_b } => write!(
                 f,
                 "gears '{gear_a}' and '{gear_b}' cannot mesh — incompatible module, pressure angle, or helix parameters"
+            ),
+            Self::DuplicateMesh { gear_a, gear_b } => write!(
+                f,
+                "gears '{gear_a}' and '{gear_b}' are declared as a mesh more than once"
             ),
             Self::DisconnectedShaft(s) => {
                 write!(
@@ -727,6 +743,22 @@ impl GearSceneBuilder {
         // shaft_edges[shaft] = Vec<(other_shaft, ratio)>  where ratio = rpm_other / rpm_self
         let mut shaft_edges: HashMap<String, Vec<(String, f64)>> = HashMap::new();
 
+        // Check for duplicate mesh declarations (order-insensitive).
+        let mut seen_meshes: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
+        for (gear_a, gear_b) in &self.meshes {
+            let key = if gear_a.as_str() <= gear_b.as_str() {
+                (gear_a.as_str(), gear_b.as_str())
+            } else {
+                (gear_b.as_str(), gear_a.as_str())
+            };
+            if !seen_meshes.insert(key) {
+                return Err(GearSceneError::DuplicateMesh {
+                    gear_a: gear_a.clone(),
+                    gear_b: gear_b.clone(),
+                });
+            }
+        }
+
         for (gear_a, gear_b) in &self.meshes {
             let shaft_a = gear_to_shaft
                 .get(gear_a)
@@ -810,7 +842,9 @@ impl GearSceneBuilder {
                     let neighbor_dir = current_state.direction.flip();
 
                     if let Some(existing) = states.get(neighbor) {
-                        if (existing.rpm - neighbor_rpm).abs() > crate::MESH_TOLERANCE {
+                        if (existing.rpm - neighbor_rpm).abs() > crate::MESH_TOLERANCE
+                            || existing.direction != neighbor_dir
+                        {
                             return Err(GearSceneError::OverConstrainedShaft(neighbor.clone()));
                         }
                     } else {
