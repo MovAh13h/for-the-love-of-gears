@@ -205,6 +205,30 @@ impl AnyGear {
             _ => false,
         }
     }
+
+    /// Transverse contact ratio `εα` for a meshing pair.
+    ///
+    /// Returns `None` if the two gears are of incompatible types (spur vs
+    /// helical) — they cannot physically mesh. For helical pairs this is
+    /// the transverse contact ratio only; add [`HelicalGear::overlap_ratio`]
+    /// for the total `εγ`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{gear::Gear, scene::AnyGear};
+    ///
+    /// let a = AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap());
+    /// let b = AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap());
+    /// let cr = a.contact_ratio_with(&b);
+    /// assert!(cr.is_some());
+    /// assert!(cr.unwrap() > 1.0);
+    /// ```
+    pub fn contact_ratio_with(&self, other: &AnyGear) -> Option<f64> {
+        match (self, other) {
+            (Self::Spur(a), Self::Spur(b)) => Some(a.contact_ratio_with(b)),
+            (Self::Helical(a), Self::Helical(b)) => Some(a.transverse_contact_ratio_with(b)),
+            _ => None,
+        }
+    }
 }
 
 impl From<Gear> for AnyGear {
