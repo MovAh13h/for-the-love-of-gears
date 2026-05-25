@@ -384,7 +384,7 @@ impl GearSceneBuilder {
             return Err(GearSceneError::DriverShaftNotFound(driver_shaft));
         }
 
-        // --- Validate meshes and build shaft_edgesacency list ---
+        // --- Validate meshes and build shaft adjacency list ---
         // shaft_edges[shaft] = Vec<(other_shaft, ratio)>  where ratio = rpm_other / rpm_self
         let mut shaft_edges: HashMap<String, Vec<(String, f64)>> = HashMap::new();
         for shaft_name in shafts.keys() {
