@@ -33,7 +33,7 @@ fn main() {
     println!("PAIR");
     println!("  Center distance   {:>8.3} mm",  driver.center_distance_to(&driven));
     println!("  Gear ratio        {:>8.3}:1",   driver.gear_ratio_to(&driven));
-    println!("  Contact ratio εα  {:>8.3}",     driver.contact_ratio_with(&driven));
+    println!("  Contact ratio εα  {:>8.3}",     driver.contact_ratio_with(&driven).unwrap());
 }
 
 fn row(label: &str, a: f64, b: f64, note: &str, w: usize) {

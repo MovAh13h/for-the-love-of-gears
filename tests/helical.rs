@@ -333,7 +333,7 @@ fn transverse_contact_ratio_positive() {
     let g1 = gear_mn2_z20_psi20_right();
     let g2 = HelicalGear::builder()
         .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    assert!(g1.transverse_contact_ratio_with(&g2) > 1.0);
+    assert!(g1.transverse_contact_ratio_with(&g2).unwrap() > 1.0);
 }
 
 #[test]
@@ -367,7 +367,7 @@ fn total_contact_ratio_greater_than_transverse() {
     let g2 = HelicalGear::builder()
         .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left)
         .face_width(30.0).build().unwrap();
-    let ea = g1.transverse_contact_ratio_with(&g2);
+    let ea = g1.transverse_contact_ratio_with(&g2).unwrap();
     let eg = g1.total_contact_ratio_with(&g2).unwrap();
     assert!(eg > ea);
 }

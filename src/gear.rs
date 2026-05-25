@@ -403,10 +403,13 @@ impl Gear {
     ///
     /// let g1 = Gear::builder().module(2.0).teeth(20).build().unwrap();
     /// let g2 = Gear::builder().module(2.0).teeth(40).build().unwrap();
-    /// assert!((g1.contact_ratio_with(&g2) - 1.635).abs() < 0.001);
+    /// assert!((g1.contact_ratio_with(&g2).unwrap() - 1.635).abs() < 0.001);
     /// ```
-    pub fn contact_ratio_with(&self, other: &Gear) -> f64 {
-        crate::contact_ratio::transverse(
+    pub fn contact_ratio_with(&self, other: &Gear) -> Option<f64> {
+        if !self.can_mesh_with(other) {
+            return None;
+        }
+        Some(crate::contact_ratio::transverse(
             self.tip_diameter() / 2.0,
             self.base_diameter() / 2.0,
             other.tip_diameter() / 2.0,
@@ -414,14 +417,14 @@ impl Gear {
             self.center_distance_to(other),
             self.pressure_angle,
             self.module,
-        )
+        ))
     }
 
     /// Transverse contact ratio `εα` with `other` — alias for [`contact_ratio_with`] for
     /// symmetry with `HelicalGear::transverse_contact_ratio_with`.
     ///
     /// [`contact_ratio_with`]: Gear::contact_ratio_with
-    pub fn transverse_contact_ratio_with(&self, other: &Gear) -> f64 {
+    pub fn transverse_contact_ratio_with(&self, other: &Gear) -> Option<f64> {
         self.contact_ratio_with(other)
     }
 
@@ -529,13 +532,16 @@ impl Gear {
     /// let pinion = Gear::builder().module(2.0).teeth(12).build().unwrap();
     /// let wheel  = Gear::builder().module(2.0).teeth(60).build().unwrap();
     /// // Large ratio: pinion is small enough to interfere into the wheel root.
-    /// assert!(pinion.interferes_with(&wheel));
+    /// assert!(pinion.interferes_with(&wheel).unwrap());
     ///
     /// let g20 = Gear::builder().module(2.0).teeth(20).build().unwrap();
     /// let g40 = Gear::builder().module(2.0).teeth(40).build().unwrap();
-    /// assert!(!g20.interferes_with(&g40));
+    /// assert!(!g20.interferes_with(&g40).unwrap());
     /// ```
-    pub fn interferes_with(&self, other: &Gear) -> bool {
+    pub fn interferes_with(&self, other: &Gear) -> Option<bool> {
+        if !self.can_mesh_with(other) {
+            return None;
+        }
         let alpha = self.pressure_angle.to_radians();
         let a = self.center_distance_to(other);
         let limit = a * alpha.sin();
@@ -548,7 +554,7 @@ impl Gear {
         let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
         let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
 
-        reach1 > limit || reach2 > limit
+        Some(reach1 > limit || reach2 > limit)
     }
 }
 

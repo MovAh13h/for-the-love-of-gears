@@ -71,7 +71,7 @@ fn main() {
 }
 
 fn contact_row(label: &str, g1: &HelicalGear, g2: &HelicalGear) {
-    let ea = g1.transverse_contact_ratio_with(g2);
+    let ea = g1.transverse_contact_ratio_with(g2).unwrap();
     let eb = g1.overlap_ratio().unwrap_or(0.0);
     let eg = g1.total_contact_ratio_with(g2).unwrap_or(ea);
     println!("  {:<22}  {:>6.3}  {:>6.3}  {:>6.3}", label, ea, eb, eg);

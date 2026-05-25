@@ -187,7 +187,7 @@ proptest! {
     ) {
         let g1 = Gear::builder().module(m).teeth(z1).build().unwrap();
         let g2 = Gear::builder().module(m).teeth(z2).build().unwrap();
-        prop_assert!(g1.contact_ratio_with(&g2) > 0.0);
+        prop_assert!(g1.contact_ratio_with(&g2).unwrap() > 0.0);
     }
 
     // --- Spur backlash ---
@@ -390,7 +390,7 @@ proptest! {
         let g2 = HelicalGear::builder()
             .module(m).teeth(z2).helix_angle(psi).helix_hand(HelixHand::Left)
             .face_width(b).build().unwrap();
-        let ea = g1.transverse_contact_ratio_with(&g2);
+        let ea = g1.transverse_contact_ratio_with(&g2).unwrap();
         let eb = g1.overlap_ratio().unwrap();
         let eg = g1.total_contact_ratio_with(&g2).unwrap();
         prop_assert!((eg - (ea + eb)).abs() < 1e-10);

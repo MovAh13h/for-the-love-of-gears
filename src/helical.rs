@@ -529,12 +529,15 @@ impl HelicalGear {
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
     /// let g2 = HelicalGear::builder().module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    /// assert!(g1.transverse_contact_ratio_with(&g2) > 1.0);
+    /// assert!(g1.transverse_contact_ratio_with(&g2).unwrap() > 1.0);
     /// ```
     ///
     /// [`total_contact_ratio_with`]: HelicalGear::total_contact_ratio_with
-    pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> f64 {
-        crate::contact_ratio::transverse(
+    pub fn transverse_contact_ratio_with(&self, other: &HelicalGear) -> Option<f64> {
+        if !self.can_mesh_with(other) {
+            return None;
+        }
+        Some(crate::contact_ratio::transverse(
             self.tip_diameter() / 2.0,
             self.base_diameter() / 2.0,
             other.tip_diameter() / 2.0,
@@ -542,7 +545,7 @@ impl HelicalGear {
             self.center_distance_to(other),
             self.transverse_pressure_angle(),
             self.transverse_module(),
-        )
+        ))
     }
 
     /// Overlap ratio `εβ = b · sin(ψ) / (π · mn)` (dimensionless).
@@ -596,7 +599,7 @@ impl HelicalGear {
     ///
     /// // Equal face widths: εγ = εα + εβ (using the common width).
     /// let eg = g1.total_contact_ratio_with(&g2).unwrap();
-    /// let ea = g1.transverse_contact_ratio_with(&g2);
+    /// let ea = g1.transverse_contact_ratio_with(&g2).unwrap();
     /// let eb = g1.overlap_ratio().unwrap();
     /// assert!((eg - (ea + eb)).abs() < 1e-10);
     ///
@@ -607,11 +610,12 @@ impl HelicalGear {
     /// assert!(eg_narrow < eg); // narrower wheel reduces total contact ratio
     /// ```
     pub fn total_contact_ratio_with(&self, other: &HelicalGear) -> Option<f64> {
+        let ea = self.transverse_contact_ratio_with(other)?;
         let b1 = self.face_width?;
         let b2 = other.face_width?;
         let b_eff = b1.min(b2);
         let eb = crate::contact_ratio::overlap(b_eff, self.helix_angle, self.module);
-        Some(self.transverse_contact_ratio_with(other) + eb)
+        Some(ea + eb)
     }
 
     // ── Backlash ──────────────────────────────────────────────────────────────
@@ -725,15 +729,18 @@ impl HelicalGear {
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
     /// let wheel = HelicalGear::builder().module(2.0).teeth(60)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    /// assert!(pinion.interferes_with(&wheel));
+    /// assert!(pinion.interferes_with(&wheel).unwrap());
     ///
     /// let g20 = HelicalGear::builder().module(2.0).teeth(20)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
     /// let g40 = HelicalGear::builder().module(2.0).teeth(40)
     ///     .helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
-    /// assert!(!g20.interferes_with(&g40));
+    /// assert!(!g20.interferes_with(&g40).unwrap());
     /// ```
-    pub fn interferes_with(&self, other: &HelicalGear) -> bool {
+    pub fn interferes_with(&self, other: &HelicalGear) -> Option<bool> {
+        if !self.can_mesh_with(other) {
+            return None;
+        }
         let alpha_t = self.transverse_pressure_angle().to_radians();
         let a = self.center_distance_to(other);
         let limit = a * alpha_t.sin();
@@ -746,7 +753,7 @@ impl HelicalGear {
         let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
         let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
 
-        reach1 > limit || reach2 > limit
+        Some(reach1 > limit || reach2 > limit)
     }
 }
 

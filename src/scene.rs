@@ -224,8 +224,8 @@ impl AnyGear {
     /// ```
     pub fn contact_ratio_with(&self, other: &AnyGear) -> Option<f64> {
         match (self, other) {
-            (Self::Spur(a), Self::Spur(b)) => Some(a.contact_ratio_with(b)),
-            (Self::Helical(a), Self::Helical(b)) => Some(a.transverse_contact_ratio_with(b)),
+            (Self::Spur(a), Self::Spur(b)) => a.contact_ratio_with(b),
+            (Self::Helical(a), Self::Helical(b)) => a.transverse_contact_ratio_with(b),
             _ => None,
         }
     }

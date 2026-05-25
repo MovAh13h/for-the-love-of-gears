@@ -53,7 +53,7 @@ fn main() {
     println!("  Center distance       {:>8.3} mm", pinion.center_distance_to(&wheel));
     println!("  Gear ratio            {:>8.3}:1",  pinion.gear_ratio_to(&wheel));
 
-    let ea = pinion.transverse_contact_ratio_with(&wheel);
+    let ea = pinion.transverse_contact_ratio_with(&wheel).unwrap();
     let eb = pinion.overlap_ratio().unwrap_or(0.0);
     let eg = pinion.total_contact_ratio_with(&wheel).unwrap_or(ea);
     println!();

@@ -74,10 +74,10 @@ fn main() {
     println!("  {:<26}  {:>6}  {:>6}  {:>6}", "mesh", "εα", "εβ", "εγ");
     println!("  {}", "─".repeat(50));
 
-    let ea_spur = spur_a.contact_ratio_with(&spur_b);
+    let ea_spur = spur_a.contact_ratio_with(&spur_b).unwrap();
     println!("  {:<26}  {:>6.3}  {:>6}  {:>6.3}", "input→intermediate (spur)", ea_spur, "—", ea_spur);
 
-    let ea_hel = ga.transverse_contact_ratio_with(&gb);
+    let ea_hel = ga.transverse_contact_ratio_with(&gb).unwrap();
     let eb_hel = ga.overlap_ratio().unwrap_or(0.0);
     let eg_hel = ga.total_contact_ratio_with(&gb).unwrap_or(ea_hel);
     println!("  {:<26}  {:>6.3}  {:>6.3}  {:>6.3}", "intermediate→output (helical)", ea_hel, eb_hel, eg_hel);
