@@ -533,6 +533,15 @@ impl GearSimulation {
             .map(|r| (r / 60.0 * t * 360.0).rem_euclid(360.0))
     }
 
+    /// Angular velocity of the named shaft in radians per second,
+    /// or `None` if the shaft name does not exist.
+    ///
+    /// `ω = rpm × 2π / 60`
+    pub fn angular_velocity_rad_s(&self, shaft: &str) -> Option<f64> {
+        self.rpm(shaft)
+            .map(|r| r * std::f64::consts::TAU / 60.0)
+    }
+
     /// Speed ratio from the driver to the named shaft: `driver_rpm / shaft_rpm`,
     /// or `None` if the shaft name does not exist.
     ///
