@@ -11,20 +11,16 @@
 
 use for_the_love_of_gears::{
     helical::{HelicalGear, HelixHand},
-    module::Module,
     scene::{AnyGear, Direction, GearScene},
 };
 
 fn main() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", hg(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft(
-            "intermediate",
-            vec![
-                ("b", hg(2.0, 40, 15.0, HelixHand::Left)), // driven by a (2:1)
-                ("c", hg(3.0, 18, 20.0, HelixHand::Right)), // drives d (3:1)
-            ],
-        )
+        .shaft("intermediate", vec![
+            ("b", hg(2.0, 40, 15.0, HelixHand::Left)),
+            ("c", hg(3.0, 18, 20.0, HelixHand::Right)),
+        ])
         .shaft("output", vec![("d", hg(3.0, 54, 20.0, HelixHand::Left))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -32,13 +28,14 @@ fn main() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1800.0, 5.0).unwrap();
+    let duration = 5.0; // seconds
+    let sim = scene.run(1800.0 /* rpm */).unwrap();
 
     println!("HELICAL GEAR TRAIN  (2-stage, 6:1)");
     println!();
     println!(
         "  {:<14}  {:>10}  {:>5}  {:>12}  {:>12}",
-        "shaft", "rpm", "dir", "rot (5 s)", "angle @1.15 s"
+        "shaft", "rpm", "dir", "rot (5 s)", "angle° @1.15 s"
     );
     println!("  {}", "─".repeat(60));
     for shaft in scene.shaft_names() {
@@ -51,7 +48,7 @@ fn main() {
             shaft,
             sim.rpm(shaft).unwrap(),
             dir,
-            sim.total_rotations(shaft).unwrap(),
+            sim.total_rotations(shaft, duration).unwrap(),
             sim.angle_deg(shaft, 1.15).unwrap(),
         );
     }
@@ -74,12 +71,9 @@ fn main() {
 }
 
 fn contact_row(label: &str, g1: &HelicalGear, g2: &HelicalGear) {
-    let ea = g1.transverse_contact_ratio_with(g2).value();
-    let eb = g1.overlap_ratio().map(|r| r.value()).unwrap_or(0.0);
-    let eg = g1
-        .total_contact_ratio_with(g2)
-        .map(|r| r.value())
-        .unwrap_or(ea);
+    let ea = g1.transverse_contact_ratio_with(g2);
+    let eb = g1.overlap_ratio().unwrap_or(0.0);
+    let eg = g1.total_contact_ratio_with(g2).unwrap_or(ea);
     println!("  {:<22}  {:>6.3}  {:>6.3}  {:>6.3}", label, ea, eb, eg);
 }
 
@@ -87,15 +81,9 @@ fn hg(module: f64, teeth: u32, helix_deg: f64, hand: HelixHand) -> AnyGear {
     AnyGear::from(helical(module, teeth, helix_deg, hand, 0.0))
 }
 
-fn helical(
-    module: f64,
-    teeth: u32,
-    helix_deg: f64,
-    hand: HelixHand,
-    face_width: f64,
-) -> HelicalGear {
+fn helical(module: f64, teeth: u32, helix_deg: f64, hand: HelixHand, face_width: f64) -> HelicalGear {
     let mut b = HelicalGear::builder()
-        .module(Module::Specified(module))
+        .module(module)
         .teeth(teeth)
         .helix_angle(helix_deg)
         .helix_hand(hand);

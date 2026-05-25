@@ -9,22 +9,15 @@
 
 use for_the_love_of_gears::{
     gear::Gear,
-    module::Module,
     scene::{AnyGear, Direction, GearScene},
 };
 
 fn main() {
     let scene = GearScene::builder()
-        .shaft("A_input", vec![("a1", g(2.0, 20))])
-        .shaft(
-            "B_intermediate",
-            vec![("b1", g(2.0, 60)), ("b2", g(3.0, 20))],
-        )
-        .shaft(
-            "C_intermediate",
-            vec![("c1", g(3.0, 80)), ("c2", g(4.0, 15))],
-        )
-        .shaft("D_output", vec![("d1", g(4.0, 75))])
+        .shaft("A_input",        vec![("a1", g(2.0, 20))])
+        .shaft("B_intermediate", vec![("b1", g(2.0, 60)), ("b2", g(3.0, 20))])
+        .shaft("C_intermediate", vec![("c1", g(3.0, 80)), ("c2", g(4.0, 15))])
+        .shaft("D_output",       vec![("d1", g(4.0, 75))])
         .mesh("a1", "b1")
         .mesh("b2", "c1")
         .mesh("c2", "d1")
@@ -32,13 +25,11 @@ fn main() {
         .build()
         .unwrap();
 
-    let sim = scene.run(1500.0, 2.0).unwrap();
+    let duration = 2.0; // seconds
+    let sim = scene.run(1500.0 /* rpm */).unwrap();
 
     println!("SHAFTS");
-    println!(
-        "  {:<18}  {:>10}  {:>5}  {:>15}",
-        "shaft", "rpm", "dir", "rotations"
-    );
+    println!("  {:<18}  {:>10}  {:>5}  {:>15}", "shaft", "rpm", "dir", "rotations (2 s)");
     println!("  {}", "─".repeat(56));
     for shaft in scene.shaft_names() {
         let dir = match sim.direction(shaft).unwrap() {
@@ -50,7 +41,7 @@ fn main() {
             shaft,
             sim.rpm(shaft).unwrap(),
             dir,
-            sim.total_rotations(shaft).unwrap()
+            sim.total_rotations(shaft, duration).unwrap()
         );
     }
     println!();
@@ -63,7 +54,7 @@ fn main() {
         "t", "A_input", "B_intermediate", "C_intermediate", "D_output"
     );
     println!("  {}", "─".repeat(62));
-    for frame in sim.frames(10.0).iter().filter(|f| f.time_secs <= 0.5) {
+    for frame in sim.frames(10.0, duration).iter().filter(|f| f.time_secs <= 0.5) {
         println!(
             "  {:<6.2}  {:>11.1}°  {:>13.1}°  {:>13.1}°  {:>9.1}°",
             frame.time_secs,
@@ -76,11 +67,5 @@ fn main() {
 }
 
 fn g(module: f64, teeth: u32) -> AnyGear {
-    AnyGear::from(
-        Gear::builder()
-            .module(Module::Specified(module))
-            .teeth(teeth)
-            .build()
-            .unwrap(),
-    )
+    AnyGear::from(Gear::builder().module(module).teeth(teeth).build().unwrap())
 }
