@@ -2,6 +2,7 @@ use for_the_love_of_gears::{
     gear::Gear,
     helical::{HelicalGear, HelixHand},
     scene::{AnyGear, Direction, GearScene, GearSceneError},
+    traits::GearGeometry,
 };
 
 fn spur(module: f64, teeth: u32) -> AnyGear {
@@ -520,12 +521,12 @@ fn helical_compound_train() {
 fn anygear_teeth_and_module() {
     let g = spur(3.0, 24);
     assert_eq!(g.teeth(), 24);
-    assert!((g.module() - 3.0).abs() < 1e-9);
+    assert!((g.normal_module() - 3.0).abs() < 1e-9);
 }
 
 #[test]
 fn anygear_helical_module_is_normal_module() {
     let g = helical(2.0, 20, 15.0, HelixHand::Right);
-    assert!((g.module() - 2.0).abs() < 1e-9);
+    assert!((g.normal_module() - 2.0).abs() < 1e-9);
     assert_eq!(g.teeth(), 20);
 }

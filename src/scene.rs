@@ -174,30 +174,6 @@ pub enum AnyGear {
 }
 
 impl AnyGear {
-    /// Number of teeth on this gear.
-    ///
-    /// Used by the scene builder to compute the mesh ratio between two shafts:
-    /// `rpm_b = rpm_a × (teeth_a / teeth_b)`.
-    pub fn teeth(&self) -> u32 {
-        match self {
-            Self::Spur(g) => g.teeth(),
-            Self::Helical(g) => g.teeth(),
-        }
-    }
-
-    /// Normal module in mm.
-    ///
-    /// For spur gears this is [`Gear::module`]; for helical gears it is
-    /// [`HelicalGear::normal_module`]. The scene builder uses the module
-    /// indirectly via `can_mesh_with` — two gears can only form a mesh if
-    /// their modules (and other parameters) match.
-    pub fn module(&self) -> f64 {
-        match self {
-            Self::Spur(g) => g.module(),
-            Self::Helical(g) => g.normal_module(),
-        }
-    }
-
     fn can_mesh_with(&self, other: &AnyGear) -> bool {
         match (self, other) {
             (Self::Spur(a), Self::Spur(b)) => a.can_mesh_with(b),
