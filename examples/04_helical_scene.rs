@@ -17,10 +17,13 @@ use for_the_love_of_gears::{
 fn main() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", hg(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft("intermediate", vec![
-            ("b", hg(2.0, 40, 15.0, HelixHand::Left)),
-            ("c", hg(3.0, 18, 20.0, HelixHand::Right)),
-        ])
+        .shaft(
+            "intermediate",
+            vec![
+                ("b", hg(2.0, 40, 15.0, HelixHand::Left)),
+                ("c", hg(3.0, 18, 20.0, HelixHand::Right)),
+            ],
+        )
         .shaft("output", vec![("d", hg(3.0, 54, 20.0, HelixHand::Left))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -81,7 +84,13 @@ fn hg(module: f64, teeth: u32, helix_deg: f64, hand: HelixHand) -> AnyGear {
     AnyGear::from(helical(module, teeth, helix_deg, hand, 0.0))
 }
 
-fn helical(module: f64, teeth: u32, helix_deg: f64, hand: HelixHand, face_width: f64) -> HelicalGear {
+fn helical(
+    module: f64,
+    teeth: u32,
+    helix_deg: f64,
+    hand: HelixHand,
+    face_width: f64,
+) -> HelicalGear {
     let mut b = HelicalGear::builder()
         .module(module)
         .teeth(teeth)

@@ -81,8 +81,8 @@ use std::fmt;
 
 pub(crate) const MESH_TOLERANCE: f64 = 1e-9;
 
-pub(crate) mod contact_ratio;
 pub mod constants;
+pub(crate) mod contact_ratio;
 pub mod gear;
 pub mod helical;
 pub mod module;
@@ -161,4 +161,3 @@ impl fmt::Display for GearError {
         }
     }
 }
-

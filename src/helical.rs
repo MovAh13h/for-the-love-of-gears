@@ -82,8 +82,8 @@ use std::f64::consts::PI;
 
 use crate::{
     constants::{
-        ADDENDUM_COEFFICIENT, CLEARANCE_COEFFICIENT, DEDENDUM_COEFFICIENT, MIN_TEETH,
-        MM_PER_INCH, WHOLE_DEPTH_COEFFICIENT,
+        ADDENDUM_COEFFICIENT, CLEARANCE_COEFFICIENT, DEDENDUM_COEFFICIENT, MIN_TEETH, MM_PER_INCH,
+        WHOLE_DEPTH_COEFFICIENT,
     },
     traits::GearGeometry,
 };
@@ -669,9 +669,11 @@ impl HelicalGear {
         if backlash_mm < 0.0 {
             return None;
         }
-        Some(backlash_mm
-            * self.transverse_pressure_angle().to_radians().cos()
-            * self.helix_angle.to_radians().cos())
+        Some(
+            backlash_mm
+                * self.transverse_pressure_angle().to_radians().cos()
+                * self.helix_angle.to_radians().cos(),
+        )
     }
 
     /// Returns `true` if this gear would be undercut when hobbed with a standard rack tool.
@@ -739,13 +741,21 @@ impl HelicalGear {
         let a = self.center_distance_to(other);
         let limit = a * alpha_t.sin();
 
-        let ra1 = self.tip_diameter()   / 2.0;
-        let rb1 = self.base_diameter()  / 2.0;
-        let ra2 = other.tip_diameter()  / 2.0;
+        let ra1 = self.tip_diameter() / 2.0;
+        let rb1 = self.base_diameter() / 2.0;
+        let ra2 = other.tip_diameter() / 2.0;
         let rb2 = other.base_diameter() / 2.0;
 
-        let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
-        let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
+        let reach1 = if ra1 > rb1 {
+            (ra1 * ra1 - rb1 * rb1).sqrt()
+        } else {
+            0.0
+        };
+        let reach2 = if ra2 > rb2 {
+            (ra2 * ra2 - rb2 * rb2).sqrt()
+        } else {
+            0.0
+        };
 
         Some(reach1 > limit || reach2 > limit)
     }
@@ -778,12 +788,24 @@ impl GearGeometry for HelicalGear {
         self.base_diameter()
     }
 
-    fn addendum(&self) -> f64 { self.addendum() }
-    fn dedendum(&self) -> f64 { self.dedendum() }
-    fn tooth_depth(&self) -> f64 { self.tooth_depth() }
-    fn clearance(&self) -> f64 { self.clearance() }
-    fn tooth_thickness(&self) -> f64 { self.tooth_thickness() }
-    fn diametral_pitch(&self) -> f64 { self.diametral_pitch() }
+    fn addendum(&self) -> f64 {
+        self.addendum()
+    }
+    fn dedendum(&self) -> f64 {
+        self.dedendum()
+    }
+    fn tooth_depth(&self) -> f64 {
+        self.tooth_depth()
+    }
+    fn clearance(&self) -> f64 {
+        self.clearance()
+    }
+    fn tooth_thickness(&self) -> f64 {
+        self.tooth_thickness()
+    }
+    fn diametral_pitch(&self) -> f64 {
+        self.diametral_pitch()
+    }
 
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         self.thinned_tooth_thickness(backlash_mm)
@@ -915,7 +937,9 @@ impl HelicalGearBuilder {
 
         let module = self.module.ok_or(HelicalGearError::ModuleRequired)?;
         let teeth = self.teeth.ok_or(HelicalGearError::TeethRequired)?;
-        let helix_angle = self.helix_angle.ok_or(HelicalGearError::HelixAngleRequired)?;
+        let helix_angle = self
+            .helix_angle
+            .ok_or(HelicalGearError::HelixAngleRequired)?;
         let helix_hand = self.helix_hand.ok_or(HelicalGearError::HelixHandRequired)?;
 
         if teeth < MIN_TEETH {
@@ -927,7 +951,9 @@ impl HelicalGearBuilder {
             teeth,
             helix_angle,
             helix_hand,
-            normal_pressure_angle: self.normal_pressure_angle.unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE),
+            normal_pressure_angle: self
+                .normal_pressure_angle
+                .unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE),
             face_width: self.face_width,
         })
     }

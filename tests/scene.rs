@@ -91,7 +91,10 @@ fn speed_up_pair() {
 fn compound_train_rpm() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft("intermediate", vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))])
+        .shaft(
+            "intermediate",
+            vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))],
+        )
         .shaft("output", vec![("d", spur(3.0, 60))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -108,7 +111,10 @@ fn compound_train_rpm() {
 fn compound_train_directions() {
     let scene = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft("intermediate", vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))])
+        .shaft(
+            "intermediate",
+            vec![("b", spur(2.0, 40)), ("c", spur(3.0, 20))],
+        )
         .shaft("output", vec![("d", spur(3.0, 60))])
         .mesh("a", "b")
         .mesh("c", "d")
@@ -118,7 +124,10 @@ fn compound_train_directions() {
 
     let sim = scene.run(1200.0).unwrap();
     assert_eq!(sim.direction("input"), Some(Direction::Clockwise));
-    assert_eq!(sim.direction("intermediate"), Some(Direction::CounterClockwise));
+    assert_eq!(
+        sim.direction("intermediate"),
+        Some(Direction::CounterClockwise)
+    );
     assert_eq!(sim.direction("output"), Some(Direction::Clockwise));
 }
 
@@ -214,7 +223,7 @@ fn frames_each_has_all_shafts() {
         .unwrap();
 
     let sim = scene.run(1000.0).unwrap();
-    let i_in  = sim.shaft_index("input").unwrap();
+    let i_in = sim.shaft_index("input").unwrap();
     let i_out = sim.shaft_index("output").unwrap();
     for frame in sim.frames(10.0, 1.0) {
         assert!(frame.shaft_angles.get(i_in).is_some());
@@ -257,8 +266,14 @@ fn driver_and_rpm_accessors() {
 #[test]
 fn helical_pair_rpm() {
     let scene = GearScene::builder()
-        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
+        .shaft(
+            "input",
+            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
+        )
+        .shaft(
+            "output",
+            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
+        )
         .mesh("a", "b")
         .driver("input")
         .build()
@@ -380,7 +395,10 @@ fn error_incompatible_mesh_different_module() {
 fn error_incompatible_mesh_spur_with_helical() {
     let result = GearScene::builder()
         .shaft("input", vec![("a", spur(2.0, 20))])
-        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
+        .shaft(
+            "output",
+            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
+        )
         .mesh("a", "b")
         .driver("input")
         .build();
@@ -420,8 +438,14 @@ fn error_driver_rpm_not_positive() {
         .build()
         .unwrap();
 
-    assert_eq!(scene.run(0.0).unwrap_err(), GearSceneError::DriverRpmMustBePositive);
-    assert_eq!(scene.run(-100.0).unwrap_err(), GearSceneError::DriverRpmMustBePositive);
+    assert_eq!(
+        scene.run(0.0).unwrap_err(),
+        GearSceneError::DriverRpmMustBePositive
+    );
+    assert_eq!(
+        scene.run(-100.0).unwrap_err(),
+        GearSceneError::DriverRpmMustBePositive
+    );
 }
 
 // ── Same scene, multiple run speeds ──────────────────────────────────────────
@@ -469,8 +493,14 @@ fn error_over_constrained_shaft() {
 #[test]
 fn helical_pair_directions() {
     let scene = GearScene::builder()
-        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
+        .shaft(
+            "input",
+            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
+        )
+        .shaft(
+            "output",
+            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
+        )
         .mesh("a", "b")
         .driver("input")
         .build()
@@ -484,8 +514,14 @@ fn helical_pair_directions() {
 #[test]
 fn helical_pair_ratio() {
     let scene = GearScene::builder()
-        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft("output", vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))])
+        .shaft(
+            "input",
+            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
+        )
+        .shaft(
+            "output",
+            vec![("b", helical(2.0, 40, 15.0, HelixHand::Left))],
+        )
         .mesh("a", "b")
         .driver("input")
         .build()
@@ -498,12 +534,21 @@ fn helical_pair_ratio() {
 #[test]
 fn helical_compound_train() {
     let scene = GearScene::builder()
-        .shaft("input", vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))])
-        .shaft("intermediate", vec![
-            ("b", helical(2.0, 40, 15.0, HelixHand::Left)),
-            ("c", helical(3.0, 15, 20.0, HelixHand::Right)),
-        ])
-        .shaft("output", vec![("d", helical(3.0, 45, 20.0, HelixHand::Left))])
+        .shaft(
+            "input",
+            vec![("a", helical(2.0, 20, 15.0, HelixHand::Right))],
+        )
+        .shaft(
+            "intermediate",
+            vec![
+                ("b", helical(2.0, 40, 15.0, HelixHand::Left)),
+                ("c", helical(3.0, 15, 20.0, HelixHand::Right)),
+            ],
+        )
+        .shaft(
+            "output",
+            vec![("d", helical(3.0, 45, 20.0, HelixHand::Left))],
+        )
         .mesh("a", "b")
         .mesh("c", "d")
         .driver("input")

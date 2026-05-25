@@ -66,8 +66,8 @@ use std::f64::consts::PI;
 
 use crate::{
     constants::{
-        ADDENDUM_COEFFICIENT, CLEARANCE_COEFFICIENT, DEDENDUM_COEFFICIENT, MIN_TEETH,
-        MM_PER_INCH, WHOLE_DEPTH_COEFFICIENT,
+        ADDENDUM_COEFFICIENT, CLEARANCE_COEFFICIENT, DEDENDUM_COEFFICIENT, MIN_TEETH, MM_PER_INCH,
+        WHOLE_DEPTH_COEFFICIENT,
     },
     traits::GearGeometry,
 };
@@ -540,13 +540,21 @@ impl Gear {
         let a = self.center_distance_to(other);
         let limit = a * alpha.sin();
 
-        let ra1 = self.tip_diameter()   / 2.0;
-        let rb1 = self.base_diameter()  / 2.0;
-        let ra2 = other.tip_diameter()  / 2.0;
+        let ra1 = self.tip_diameter() / 2.0;
+        let rb1 = self.base_diameter() / 2.0;
+        let ra2 = other.tip_diameter() / 2.0;
         let rb2 = other.base_diameter() / 2.0;
 
-        let reach1 = if ra1 > rb1 { (ra1 * ra1 - rb1 * rb1).sqrt() } else { 0.0 };
-        let reach2 = if ra2 > rb2 { (ra2 * ra2 - rb2 * rb2).sqrt() } else { 0.0 };
+        let reach1 = if ra1 > rb1 {
+            (ra1 * ra1 - rb1 * rb1).sqrt()
+        } else {
+            0.0
+        };
+        let reach2 = if ra2 > rb2 {
+            (ra2 * ra2 - rb2 * rb2).sqrt()
+        } else {
+            0.0
+        };
 
         Some(reach1 > limit || reach2 > limit)
     }
@@ -579,12 +587,24 @@ impl GearGeometry for Gear {
         self.base_diameter()
     }
 
-    fn addendum(&self) -> f64 { self.addendum() }
-    fn dedendum(&self) -> f64 { self.dedendum() }
-    fn tooth_depth(&self) -> f64 { self.tooth_depth() }
-    fn clearance(&self) -> f64 { self.clearance() }
-    fn tooth_thickness(&self) -> f64 { self.tooth_thickness() }
-    fn diametral_pitch(&self) -> f64 { self.diametral_pitch() }
+    fn addendum(&self) -> f64 {
+        self.addendum()
+    }
+    fn dedendum(&self) -> f64 {
+        self.dedendum()
+    }
+    fn tooth_depth(&self) -> f64 {
+        self.tooth_depth()
+    }
+    fn clearance(&self) -> f64 {
+        self.clearance()
+    }
+    fn tooth_thickness(&self) -> f64 {
+        self.tooth_thickness()
+    }
+    fn diametral_pitch(&self) -> f64 {
+        self.diametral_pitch()
+    }
 
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
         self.thinned_tooth_thickness(backlash_mm)
@@ -682,6 +702,10 @@ impl GearBuilder {
             return Err(GearError::TeethTooFew);
         }
 
-        Ok(Gear { module, teeth, pressure_angle: self.pressure_angle.unwrap_or(DEFAULT_PRESSURE_ANGLE) })
+        Ok(Gear {
+            module,
+            teeth,
+            pressure_angle: self.pressure_angle.unwrap_or(DEFAULT_PRESSURE_ANGLE),
+        })
     }
 }

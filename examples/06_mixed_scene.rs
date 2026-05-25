@@ -19,24 +19,26 @@ use for_the_love_of_gears::{
 
 fn main() {
     let scene = GearScene::builder()
-        .shaft("input", vec![
-            ("a", spur(2.0, 25)),
-        ])
-        .shaft("intermediate", vec![
-            ("b", spur(2.0, 75)),                                        // stage 1 driven
-            ("c", helical(2.5, 20, 20.0, HelixHand::Right)),             // stage 2 driver
-        ])
-        .shaft("output", vec![
-            ("d", helical(2.5, 60, 20.0, HelixHand::Left)),
-        ])
-        .mesh("a", "b")   // spur stage
-        .mesh("c", "d")   // helical stage
+        .shaft("input", vec![("a", spur(2.0, 25))])
+        .shaft(
+            "intermediate",
+            vec![
+                ("b", spur(2.0, 75)),                            // stage 1 driven
+                ("c", helical(2.5, 20, 20.0, HelixHand::Right)), // stage 2 driver
+            ],
+        )
+        .shaft(
+            "output",
+            vec![("d", helical(2.5, 60, 20.0, HelixHand::Left))],
+        )
+        .mesh("a", "b") // spur stage
+        .mesh("c", "d") // helical stage
         .driver("input")
         .build()
         .unwrap();
 
     let driver_rpm = 1_800.0; // rpm
-    let duration   = 3.0;     // seconds
+    let duration = 3.0; // seconds
     let sim = scene.run(driver_rpm).unwrap();
 
     println!("MIXED SPUR + HELICAL COMPOUND TRAIN  (9:1)");
@@ -48,9 +50,9 @@ fn main() {
     println!("  {}", "─".repeat(60));
 
     for shaft in scene.shaft_names() {
-        let rpm   = sim.rpm(shaft).unwrap();
-        let dir   = fmt_dir(sim.direction(shaft).unwrap());
-        let rots  = sim.total_rotations(shaft, duration).unwrap();
+        let rpm = sim.rpm(shaft).unwrap();
+        let dir = fmt_dir(sim.direction(shaft).unwrap());
+        let rots = sim.total_rotations(shaft, duration).unwrap();
         let omega = sim.angular_velocity_rad_s(shaft).unwrap();
         println!(
             "  {:<14}  {:>10.3}  {:>5}  {:>14.3}  {:>10.4}",
@@ -59,13 +61,36 @@ fn main() {
     }
 
     println!();
-    println!("  Stage 1 ratio (spur):    {:.1}:1", sim.ratio_to("intermediate").unwrap());
-    println!("  Stage 2 ratio (helical): {:.1}:1", sim.ratio_to("output").unwrap() / sim.ratio_to("intermediate").unwrap());
-    println!("  Overall ratio:           {:.1}:1", sim.ratio_to("output").unwrap());
+    println!(
+        "  Stage 1 ratio (spur):    {:.1}:1",
+        sim.ratio_to("intermediate").unwrap()
+    );
+    println!(
+        "  Stage 2 ratio (helical): {:.1}:1",
+        sim.ratio_to("output").unwrap() / sim.ratio_to("intermediate").unwrap()
+    );
+    println!(
+        "  Overall ratio:           {:.1}:1",
+        sim.ratio_to("output").unwrap()
+    );
 
     // Build gear objects for contact-ratio queries (need face_width for εβ).
-    let ga = HelicalGear::builder().module(2.5).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).face_width(30.0).build().unwrap();
-    let gb = HelicalGear::builder().module(2.5).teeth(60).helix_angle(20.0).helix_hand(HelixHand::Left).face_width(30.0).build().unwrap();
+    let ga = HelicalGear::builder()
+        .module(2.5)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
+    let gb = HelicalGear::builder()
+        .module(2.5)
+        .teeth(60)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .face_width(30.0)
+        .build()
+        .unwrap();
     let spur_a = Gear::builder().module(2.0).teeth(25).build().unwrap();
     let spur_b = Gear::builder().module(2.0).teeth(75).build().unwrap();
 
@@ -75,15 +100,21 @@ fn main() {
     println!("  {}", "─".repeat(50));
 
     let ea_spur = spur_a.contact_ratio_with(&spur_b).unwrap();
-    println!("  {:<26}  {:>6.3}  {:>6}  {:>6.3}", "input→intermediate (spur)", ea_spur, "—", ea_spur);
+    println!(
+        "  {:<26}  {:>6.3}  {:>6}  {:>6.3}",
+        "input→intermediate (spur)", ea_spur, "—", ea_spur
+    );
 
     let ea_hel = ga.transverse_contact_ratio_with(&gb).unwrap();
     let eb_hel = ga.overlap_ratio().unwrap_or(0.0);
     let eg_hel = ga.total_contact_ratio_with(&gb).unwrap_or(ea_hel);
-    println!("  {:<26}  {:>6.3}  {:>6.3}  {:>6.3}", "intermediate→output (helical)", ea_hel, eb_hel, eg_hel);
+    println!(
+        "  {:<26}  {:>6.3}  {:>6.3}  {:>6.3}",
+        "intermediate→output (helical)", ea_hel, eb_hel, eg_hel
+    );
 
     println!();
-    let i_in  = sim.shaft_index("input").unwrap();
+    let i_in = sim.shaft_index("input").unwrap();
     let i_mid = sim.shaft_index("intermediate").unwrap();
     let i_out = sim.shaft_index("output").unwrap();
 
@@ -93,7 +124,11 @@ fn main() {
         "t (s)", "input°", "intermediate°", "output°"
     );
     println!("  {}", "─".repeat(52));
-    for frame in sim.frames(10.0, duration).iter().filter(|f| f.time_secs <= 0.3) {
+    for frame in sim
+        .frames(10.0, duration)
+        .iter()
+        .filter(|f| f.time_secs <= 0.3)
+    {
         println!(
             "  {:<7.2}  {:>9.1}°  {:>15.1}°  {:>9.1}°",
             frame.time_secs,

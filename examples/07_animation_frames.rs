@@ -23,9 +23,9 @@ use for_the_love_of_gears::{
 
 fn main() {
     let scene = GearScene::builder()
-        .shaft("input",        vec![("a", g(2.0, 20))])
+        .shaft("input", vec![("a", g(2.0, 20))])
         .shaft("intermediate", vec![("b", g(2.0, 60)), ("c", g(3.0, 20))])
-        .shaft("output",       vec![("d", g(3.0, 40))])
+        .shaft("output", vec![("d", g(3.0, 40))])
         .mesh("a", "b")
         .mesh("c", "d")
         .driver("input")
@@ -33,8 +33,8 @@ fn main() {
         .unwrap();
 
     let driver_rpm = 180.0; // rpm
-    let fps        = 24.0;  // frames per second
-    let duration   = 2.0;   // seconds — one full output revolution
+    let fps = 24.0; // frames per second
+    let duration = 2.0; // seconds — one full output revolution
 
     let sim = scene.run(driver_rpm).unwrap();
 
@@ -48,10 +48,10 @@ fn main() {
     println!("  {}", "─".repeat(66));
 
     for shaft in scene.shaft_names() {
-        let rpm    = sim.rpm(shaft).unwrap();
-        let dir    = fmt_dir(sim.direction(shaft).unwrap());
-        let period = 60.0 / rpm;           // seconds per revolution
-        let omega  = rpm * TAU / 60.0;     // rad/s
+        let rpm = sim.rpm(shaft).unwrap();
+        let dir = fmt_dir(sim.direction(shaft).unwrap());
+        let period = 60.0 / rpm; // seconds per revolution
+        let omega = rpm * TAU / 60.0; // rad/s
         let omega_deg = rpm * 360.0 / 60.0; // degrees/s
 
         println!(
@@ -67,22 +67,28 @@ fn main() {
     println!();
     println!("SYNCHRONISATION  (at {fps:.0} fps)");
     for shaft in scene.shaft_names() {
-        let rpm    = sim.rpm(shaft).unwrap();
+        let rpm = sim.rpm(shaft).unwrap();
         let period = 60.0 / rpm;
         let frames_per_rev = period * fps;
-        println!("  {:<14}  one revolution every {:>6.2} frames  ({period:.4} s)", shaft, frames_per_rev);
+        println!(
+            "  {:<14}  one revolution every {:>6.2} frames  ({period:.4} s)",
+            shaft, frames_per_rev
+        );
     }
 
     // ── Animation frames table ───────────────────────────────────────────────
     println!();
-    println!("ANIMATION FRAMES  ({fps:.0} fps, {duration:.1} s total — {} frames)", (duration * fps) as usize + 1);
+    println!(
+        "ANIMATION FRAMES  ({fps:.0} fps, {duration:.1} s total — {} frames)",
+        (duration * fps) as usize + 1
+    );
     println!(
         "  {:>5}  {:<7}  {:>10}  {:>16}  {:>10}",
         "frame", "t (s)", "input°", "intermediate°", "output°"
     );
     println!("  {}", "─".repeat(56));
 
-    let i_in  = sim.shaft_index("input").unwrap();
+    let i_in = sim.shaft_index("input").unwrap();
     let i_mid = sim.shaft_index("intermediate").unwrap();
     let i_out = sim.shaft_index("output").unwrap();
 
@@ -103,7 +109,7 @@ fn main() {
     println!("SPOT CHECKS  (angle = rpm/60 × t × 360°  mod 360°)");
     for &t in &[0.0_f64, 1.0 / fps, 0.5, 1.0, duration] {
         let input_angle = sim.angle_deg("input", t).unwrap();
-        let out_angle   = sim.angle_deg("output", t).unwrap();
+        let out_angle = sim.angle_deg("output", t).unwrap();
         println!(
             "  t = {:>6.4} s  →  input {:>7.2}°   output {:>7.2}°",
             t, input_angle, out_angle

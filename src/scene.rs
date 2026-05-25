@@ -127,7 +127,6 @@ use std::{
 
 use crate::{gear::Gear, helical::HelicalGear, traits::GearGeometry};
 
-
 #[derive(Debug, Clone, Copy)]
 struct ShaftState {
     rpm: f64,
@@ -535,7 +534,13 @@ impl GearScene {
             .states
             .iter()
             .map(|(shaft, s)| {
-                (shaft.clone(), ShaftState { rpm: s.rpm * driver_rpm, direction: s.direction })
+                (
+                    shaft.clone(),
+                    ShaftState {
+                        rpm: s.rpm * driver_rpm,
+                        direction: s.direction,
+                    },
+                )
             })
             .collect();
 
@@ -739,7 +744,8 @@ impl GearSceneBuilder {
         let mut shaft_edges: HashMap<String, Vec<(String, f64)>> = HashMap::new();
 
         // Check for duplicate mesh declarations (order-insensitive).
-        let mut seen_meshes: std::collections::HashSet<(&str, &str)> = std::collections::HashSet::new();
+        let mut seen_meshes: std::collections::HashSet<(&str, &str)> =
+            std::collections::HashSet::new();
         for (gear_a, gear_b) in &self.meshes {
             let key = if gear_a.as_str() <= gear_b.as_str() {
                 (gear_a.as_str(), gear_b.as_str())
@@ -787,7 +793,8 @@ impl GearSceneBuilder {
             if !g_a.can_mesh_with(g_b) {
                 let err = if matches!(
                     (g_a, g_b),
-                    (AnyGear::Spur(_), AnyGear::Helical(_)) | (AnyGear::Helical(_), AnyGear::Spur(_))
+                    (AnyGear::Spur(_), AnyGear::Helical(_))
+                        | (AnyGear::Helical(_), AnyGear::Spur(_))
                 ) {
                     GearSceneError::MeshTypeMismatch {
                         gear_a: gear_a.clone(),
@@ -822,7 +829,10 @@ impl GearSceneBuilder {
         let mut states: HashMap<String, ShaftState> = HashMap::new();
         states.insert(
             driver_shaft.clone(),
-            ShaftState { rpm: 1.0, direction: Direction::Clockwise },
+            ShaftState {
+                rpm: 1.0,
+                direction: Direction::Clockwise,
+            },
         );
 
         let mut queue: VecDeque<String> = VecDeque::new();
@@ -845,7 +855,10 @@ impl GearSceneBuilder {
                     } else {
                         states.insert(
                             neighbor.clone(),
-                            ShaftState { rpm: neighbor_rpm, direction: neighbor_dir },
+                            ShaftState {
+                                rpm: neighbor_rpm,
+                                direction: neighbor_dir,
+                            },
                         );
                         queue.push_back(neighbor.clone());
                     }
@@ -1014,7 +1027,10 @@ impl GearSimulation {
                         (rpm / 60.0 * t * 360.0).rem_euclid(360.0)
                     })
                     .collect();
-                SimFrame { time_secs: t, shaft_angles }
+                SimFrame {
+                    time_secs: t,
+                    shaft_angles,
+                }
             })
             .collect()
     }

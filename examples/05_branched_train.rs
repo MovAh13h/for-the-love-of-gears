@@ -19,12 +19,15 @@ use for_the_love_of_gears::{
 
 fn main() {
     let scene = GearScene::builder()
-        .shaft("motor", vec![
-            ("m1", g(2.0, 30)),  // drives spindle
-            ("m2", g(3.0, 20)),  // drives coolant pump
-        ])
-        .shaft("spindle",       vec![("s1", g(2.0, 15))])
-        .shaft("coolant_pump",  vec![("p1", g(3.0, 80))])
+        .shaft(
+            "motor",
+            vec![
+                ("m1", g(2.0, 30)), // drives spindle
+                ("m2", g(3.0, 20)), // drives coolant pump
+            ],
+        )
+        .shaft("spindle", vec![("s1", g(2.0, 15))])
+        .shaft("coolant_pump", vec![("p1", g(3.0, 80))])
         .mesh("m1", "s1")
         .mesh("m2", "p1")
         .driver("motor")
@@ -32,11 +35,13 @@ fn main() {
         .unwrap();
 
     let driver_rpm = 3_600.0; // rpm
-    let duration   = 1.0;     // seconds
+    let duration = 1.0; // seconds
     let sim = scene.run(driver_rpm).unwrap();
 
     println!("BRANCHED GEAR TRAIN");
-    println!("  Motor: {driver_rpm:.0} rpm driving spindle (step-up 2:1) + coolant pump (reduction 4:1)");
+    println!(
+        "  Motor: {driver_rpm:.0} rpm driving spindle (step-up 2:1) + coolant pump (reduction 4:1)"
+    );
     println!();
     println!(
         "  {:<14}  {:>10}  {:>5}  {:>14}  {:>14}  {:>10}",
@@ -45,11 +50,11 @@ fn main() {
     println!("  {}", "─".repeat(74));
 
     for shaft in scene.shaft_names() {
-        let rpm    = sim.rpm(shaft).unwrap();
-        let dir    = fmt_dir(sim.direction(shaft).unwrap());
-        let rots   = sim.total_rotations(shaft, duration).unwrap();
+        let rpm = sim.rpm(shaft).unwrap();
+        let dir = fmt_dir(sim.direction(shaft).unwrap());
+        let rots = sim.total_rotations(shaft, duration).unwrap();
         let period = 60.0 / rpm; // seconds per revolution
-        let omega  = sim.angular_velocity_rad_s(shaft).unwrap();
+        let omega = sim.angular_velocity_rad_s(shaft).unwrap();
         println!(
             "  {:<14}  {:>10.1}  {:>5}  {:>14.3}  {:>14.4}  {:>10.3}",
             shaft, rpm, dir, rots, period, omega
@@ -57,11 +62,17 @@ fn main() {
     }
 
     println!();
-    println!("  Spindle  ratio: {:.1}:1  (step-up)", sim.ratio_to("spindle").unwrap());
-    println!("  Coolant  ratio: {:.1}:1  (reduction)", sim.ratio_to("coolant_pump").unwrap());
+    println!(
+        "  Spindle  ratio: {:.1}:1  (step-up)",
+        sim.ratio_to("spindle").unwrap()
+    );
+    println!(
+        "  Coolant  ratio: {:.1}:1  (reduction)",
+        sim.ratio_to("coolant_pump").unwrap()
+    );
 
     println!();
-    let i_motor   = sim.shaft_index("motor").unwrap();
+    let i_motor = sim.shaft_index("motor").unwrap();
     let i_spindle = sim.shaft_index("spindle").unwrap();
     let i_coolant = sim.shaft_index("coolant_pump").unwrap();
 
@@ -71,7 +82,11 @@ fn main() {
         "t (s)", "motor°", "spindle°", "coolant_pump°"
     );
     println!("  {}", "─".repeat(50));
-    for frame in sim.frames(12.0, duration).iter().filter(|f| f.time_secs <= 0.25) {
+    for frame in sim
+        .frames(12.0, duration)
+        .iter()
+        .filter(|f| f.time_secs <= 0.25)
+    {
         println!(
             "  {:<7.4}  {:>9.1}°  {:>11.1}°  {:>13.1}°",
             frame.time_secs,

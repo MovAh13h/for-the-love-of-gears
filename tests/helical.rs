@@ -16,7 +16,11 @@ fn gear_mn2_z20_psi20_right() -> HelicalGear {
 #[test]
 fn build_requires_module() {
     assert_eq!(
-        HelicalGear::builder().teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+        HelicalGear::builder()
+            .teeth(20)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::ModuleRequired)
     );
 }
@@ -24,7 +28,11 @@ fn build_requires_module() {
 #[test]
 fn build_requires_teeth() {
     assert_eq!(
-        HelicalGear::builder().module(2.0).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+        HelicalGear::builder()
+            .module(2.0)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::TeethRequired)
     );
 }
@@ -32,7 +40,11 @@ fn build_requires_teeth() {
 #[test]
 fn build_requires_helix_angle() {
     assert_eq!(
-        HelicalGear::builder().module(2.0).teeth(20).helix_hand(HelixHand::Right).build(),
+        HelicalGear::builder()
+            .module(2.0)
+            .teeth(20)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::HelixAngleRequired)
     );
 }
@@ -40,7 +52,11 @@ fn build_requires_helix_angle() {
 #[test]
 fn build_requires_helix_hand() {
     assert_eq!(
-        HelicalGear::builder().module(2.0).teeth(20).helix_angle(20.0).build(),
+        HelicalGear::builder()
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(20.0)
+            .build(),
         Err(HelicalGearError::HelixHandRequired)
     );
 }
@@ -51,7 +67,11 @@ fn build_requires_helix_hand() {
 fn build_rejects_zero_module() {
     assert_eq!(
         HelicalGear::builder()
-            .module(0.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+            .module(0.0)
+            .teeth(20)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::ModuleMustBePositive)
     );
 }
@@ -60,7 +80,11 @@ fn build_rejects_zero_module() {
 fn build_rejects_zero_teeth() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(0).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(0)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::TeethTooFew)
     );
 }
@@ -69,7 +93,11 @@ fn build_rejects_zero_teeth() {
 fn build_rejects_one_tooth() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(1).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(1)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::TeethTooFew)
     );
 }
@@ -78,7 +106,11 @@ fn build_rejects_one_tooth() {
 fn build_rejects_two_teeth() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(2).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(2)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::TeethTooFew)
     );
 }
@@ -87,7 +119,11 @@ fn build_rejects_two_teeth() {
 fn build_accepts_three_teeth() {
     assert!(
         HelicalGear::builder()
-            .module(2.0).teeth(3).helix_angle(20.0).helix_hand(HelixHand::Right).build()
+            .module(2.0)
+            .teeth(3)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .build()
             .is_ok()
     );
 }
@@ -96,7 +132,11 @@ fn build_accepts_three_teeth() {
 fn build_rejects_zero_helix_angle() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(20).helix_angle(0.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(0.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::HelixAngleMustBePositive)
     );
 }
@@ -105,7 +145,11 @@ fn build_rejects_zero_helix_angle() {
 fn build_rejects_negative_helix_angle() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(20).helix_angle(-10.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(-10.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::HelixAngleMustBePositive)
     );
 }
@@ -114,7 +158,11 @@ fn build_rejects_negative_helix_angle() {
 fn build_rejects_helix_angle_of_90() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(20).helix_angle(90.0).helix_hand(HelixHand::Right).build(),
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(90.0)
+            .helix_hand(HelixHand::Right)
+            .build(),
         Err(HelicalGearError::HelixAngleMustBeLessThan90)
     );
 }
@@ -123,8 +171,12 @@ fn build_rejects_helix_angle_of_90() {
 fn build_rejects_zero_pressure_angle() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-            .normal_pressure_angle(0.0).build(),
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .normal_pressure_angle(0.0)
+            .build(),
         Err(HelicalGearError::PressureAngleMustBePositive)
     );
 }
@@ -133,8 +185,12 @@ fn build_rejects_zero_pressure_angle() {
 fn build_rejects_zero_face_width() {
     assert_eq!(
         HelicalGear::builder()
-            .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-            .face_width(0.0).build(),
+            .module(2.0)
+            .teeth(20)
+            .helix_angle(20.0)
+            .helix_hand(HelixHand::Right)
+            .face_width(0.0)
+            .build(),
         Err(HelicalGearError::FaceWidthMustBePositive)
     );
 }
@@ -154,8 +210,13 @@ fn build_face_width_is_none_by_default() {
 #[test]
 fn build_stores_face_width() {
     let gear = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-        .face_width(30.0).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
     assert_eq!(gear.face_width(), Some(30.0));
 }
 
@@ -262,56 +323,116 @@ fn lead_equals_axial_pitch_times_teeth() {
 #[test]
 fn can_mesh_with_opposite_hand() {
     let right = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let left = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert!(right.can_mesh_with(&left));
 }
 
 #[test]
 fn cannot_mesh_with_same_hand() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     assert!(!g1.can_mesh_with(&g2));
 }
 
 #[test]
 fn cannot_mesh_with_different_module() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(3.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(3.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert!(!g1.can_mesh_with(&g2));
 }
 
 #[test]
 fn cannot_mesh_with_different_helix_angle() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(25.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(25.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert!(!g1.can_mesh_with(&g2));
 }
 
 #[test]
 fn cannot_mesh_with_different_pressure_angle() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-        .normal_pressure_angle(20.0).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .normal_pressure_angle(20.0)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left)
-        .normal_pressure_angle(14.5).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .normal_pressure_angle(14.5)
+        .build()
+        .unwrap();
     assert!(!g1.can_mesh_with(&g2));
 }
 
 #[test]
 fn gear_ratio() {
     let driver = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let driven = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert_eq!(driver.gear_ratio_to(&driven), 2.0);
     assert_eq!(driven.gear_ratio_to(&driver), 0.5);
 }
@@ -319,9 +440,19 @@ fn gear_ratio() {
 #[test]
 fn center_distance() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     let expected = (g1.reference_diameter() + g2.reference_diameter()) / 2.0;
     assert!((g1.center_distance_to(&g2) - expected).abs() < 1e-10);
 }
@@ -332,7 +463,12 @@ fn center_distance() {
 fn transverse_contact_ratio_positive() {
     let g1 = gear_mn2_z20_psi20_right();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert!(g1.transverse_contact_ratio_with(&g2).unwrap() > 1.0);
 }
 
@@ -345,8 +481,13 @@ fn overlap_ratio_requires_face_width() {
 fn overlap_ratio_formula() {
     // b=30mm, ψ=20°, mn=2mm → εβ = 30·sin(20°) / (π·2)
     let g = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-        .face_width(30.0).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
     let expected = 30.0 * 20.0_f64.to_radians().sin() / (PI * 2.0);
     assert!((g.overlap_ratio().unwrap() - expected).abs() < 1e-10);
 }
@@ -355,18 +496,33 @@ fn overlap_ratio_formula() {
 fn total_contact_ratio_requires_face_width() {
     let g1 = gear_mn2_z20_psi20_right();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .build()
+        .unwrap();
     assert!(g1.total_contact_ratio_with(&g2).is_none());
 }
 
 #[test]
 fn total_contact_ratio_greater_than_transverse() {
     let g1 = HelicalGear::builder()
-        .module(2.0).teeth(20).helix_angle(20.0).helix_hand(HelixHand::Right)
-        .face_width(30.0).build().unwrap();
+        .module(2.0)
+        .teeth(20)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Right)
+        .face_width(30.0)
+        .build()
+        .unwrap();
     let g2 = HelicalGear::builder()
-        .module(2.0).teeth(40).helix_angle(20.0).helix_hand(HelixHand::Left)
-        .face_width(30.0).build().unwrap();
+        .module(2.0)
+        .teeth(40)
+        .helix_angle(20.0)
+        .helix_hand(HelixHand::Left)
+        .face_width(30.0)
+        .build()
+        .unwrap();
     let ea = g1.transverse_contact_ratio_with(&g2).unwrap();
     let eg = g1.total_contact_ratio_with(&g2).unwrap();
     assert!(eg > ea);
@@ -376,7 +532,11 @@ fn total_contact_ratio_greater_than_transverse() {
 
 #[test]
 fn thinned_tooth_thickness_none_on_negative_backlash() {
-    assert!(gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01).is_none());
+    assert!(
+        gear_mn2_z20_psi20_right()
+            .thinned_tooth_thickness(-0.01)
+            .is_none()
+    );
 }
 
 #[test]

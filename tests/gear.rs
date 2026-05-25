@@ -9,12 +9,18 @@ fn gear_m2_z20() -> Gear {
 
 #[test]
 fn build_requires_module() {
-    assert_eq!(Gear::builder().teeth(20).build(), Err(GearError::ModuleRequired));
+    assert_eq!(
+        Gear::builder().teeth(20).build(),
+        Err(GearError::ModuleRequired)
+    );
 }
 
 #[test]
 fn build_requires_teeth() {
-    assert_eq!(Gear::builder().module(2.0).build(), Err(GearError::TeethRequired));
+    assert_eq!(
+        Gear::builder().module(2.0).build(),
+        Err(GearError::TeethRequired)
+    );
 }
 
 // --- Builder: validation ---
@@ -67,7 +73,11 @@ fn build_accepts_three_teeth() {
 #[test]
 fn build_rejects_zero_pressure_angle() {
     assert_eq!(
-        Gear::builder().module(2.0).teeth(20).pressure_angle(0.0).build(),
+        Gear::builder()
+            .module(2.0)
+            .teeth(20)
+            .pressure_angle(0.0)
+            .build(),
         Err(GearError::PressureAngleMustBePositive)
     );
 }
@@ -81,7 +91,12 @@ fn build_defaults_pressure_angle_to_20() {
 
 #[test]
 fn build_accepts_custom_pressure_angle() {
-    let gear = Gear::builder().module(2.0).teeth(20).pressure_angle(14.5).build().unwrap();
+    let gear = Gear::builder()
+        .module(2.0)
+        .teeth(20)
+        .pressure_angle(14.5)
+        .build()
+        .unwrap();
     assert_eq!(gear.pressure_angle(), 14.5);
 }
 
@@ -161,8 +176,18 @@ fn cannot_mesh_with_different_module() {
 
 #[test]
 fn cannot_mesh_with_different_pressure_angle() {
-    let g1 = Gear::builder().module(2.0).teeth(20).pressure_angle(20.0).build().unwrap();
-    let g2 = Gear::builder().module(2.0).teeth(40).pressure_angle(14.5).build().unwrap();
+    let g1 = Gear::builder()
+        .module(2.0)
+        .teeth(20)
+        .pressure_angle(20.0)
+        .build()
+        .unwrap();
+    let g2 = Gear::builder()
+        .module(2.0)
+        .teeth(40)
+        .pressure_angle(14.5)
+        .build()
+        .unwrap();
     assert!(!g1.can_mesh_with(&g2));
 }
 

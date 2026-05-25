@@ -32,8 +32,14 @@ pub(crate) fn transverse(
 ) -> f64 {
     let alpha = pressure_angle_deg.to_radians();
     let base_pitch = PI * module * alpha.cos();
-    path_of_contact(tip_radius_1, base_radius_1, tip_radius_2, base_radius_2, center_distance, alpha)
-        / base_pitch
+    path_of_contact(
+        tip_radius_1,
+        base_radius_1,
+        tip_radius_2,
+        base_radius_2,
+        center_distance,
+        alpha,
+    ) / base_pitch
 }
 
 /// Overlap ratio for a helical gear: `εβ = b·sin(ψ) / (π·mn)`.
@@ -43,7 +49,15 @@ pub(crate) fn overlap(face_width: f64, helix_angle_deg: f64, normal_module: f64)
 
 fn path_of_contact(ra1: f64, rb1: f64, ra2: f64, rb2: f64, a: f64, alpha: f64) -> f64 {
     // Tip radius must exceed base radius; if not (degenerate geometry), clamp to 0.
-    let approach = if ra1 > rb1 { (ra1.powi(2) - rb1.powi(2)).sqrt() } else { 0.0 };
-    let recess   = if ra2 > rb2 { (ra2.powi(2) - rb2.powi(2)).sqrt() } else { 0.0 };
+    let approach = if ra1 > rb1 {
+        (ra1.powi(2) - rb1.powi(2)).sqrt()
+    } else {
+        0.0
+    };
+    let recess = if ra2 > rb2 {
+        (ra2.powi(2) - rb2.powi(2)).sqrt()
+    } else {
+        0.0
+    };
     (approach + recess - a * alpha.sin()).max(0.0)
 }
