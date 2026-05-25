@@ -199,7 +199,7 @@ proptest! {
         jt in 0.0f64..=1.0f64,
     ) {
         let g = Gear::builder().module(m).teeth(z).build().unwrap();
-        let thinned = g.thinned_tooth_thickness(jt);
+        let thinned = g.thinned_tooth_thickness(jt).unwrap();
         prop_assert!((2.0 * (g.tooth_thickness() - thinned) - jt).abs() < 1e-10);
     }
 
@@ -210,7 +210,7 @@ proptest! {
         jt in 1e-6f64..=1.0f64,
     ) {
         let g = Gear::builder().module(m).teeth(z).build().unwrap();
-        prop_assert!(g.thinned_tooth_thickness(jt) < g.tooth_thickness());
+        prop_assert!(g.thinned_tooth_thickness(jt).unwrap() < g.tooth_thickness());
     }
 
     #[test]
@@ -220,7 +220,7 @@ proptest! {
         jt in 1e-6f64..=1.0f64,
     ) {
         let g = Gear::builder().module(m).teeth(z).build().unwrap();
-        prop_assert!(g.normal_backlash(jt) < jt);
+        prop_assert!(g.normal_backlash(jt).unwrap() < jt);
     }
 
     // --- Helical gear invariants ---
@@ -420,7 +420,7 @@ proptest! {
     ) {
         let g_spur = Gear::builder().module(m).teeth(z).build().unwrap();
         let g_helical = helical_gear(m, z, psi, HelixHand::Right);
-        prop_assert!(g_helical.normal_backlash(jt) < g_spur.normal_backlash(jt));
+        prop_assert!(g_helical.normal_backlash(jt).unwrap() < g_spur.normal_backlash(jt).unwrap());
     }
 
     // --- Scene: ratio propagation ---

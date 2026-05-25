@@ -375,21 +375,21 @@ fn total_contact_ratio_greater_than_transverse() {
 // --- Backlash ---
 
 #[test]
-#[should_panic(expected = "backlash must be non-negative")]
-fn thinned_tooth_thickness_panics_on_negative_backlash() {
-    gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01);
+fn thinned_tooth_thickness_err_on_negative_backlash() {
+    use for_the_love_of_gears::BacklashError;
+    assert_eq!(gear_mn2_z20_psi20_right().thinned_tooth_thickness(-0.01), Err(BacklashError::NegativeBacklash));
 }
 
 #[test]
-#[should_panic(expected = "backlash must be non-negative")]
-fn normal_backlash_panics_on_negative_backlash() {
-    gear_mn2_z20_psi20_right().normal_backlash(-0.01);
+fn normal_backlash_err_on_negative_backlash() {
+    use for_the_love_of_gears::BacklashError;
+    assert_eq!(gear_mn2_z20_psi20_right().normal_backlash(-0.01), Err(BacklashError::NegativeBacklash));
 }
 
 #[test]
 fn thinned_tooth_thickness() {
     let g = gear_mn2_z20_psi20_right();
-    let s = g.thinned_tooth_thickness(0.08);
+    let s = g.thinned_tooth_thickness(0.08).unwrap();
     let expected = PI * 2.0 / 2.0 - 0.04 * 20.0_f64.to_radians().cos();
     assert!((s - expected).abs() < 1e-10);
 }
@@ -397,5 +397,5 @@ fn thinned_tooth_thickness() {
 #[test]
 fn normal_backlash_less_than_circular() {
     let g = gear_mn2_z20_psi20_right();
-    assert!(g.normal_backlash(0.08) < 0.08);
+    assert!(g.normal_backlash(0.08).unwrap() < 0.08);
 }

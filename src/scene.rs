@@ -297,14 +297,14 @@ impl GearGeometry for AnyGear {
         }
     }
 
-    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
         match self {
             Self::Spur(g) => g.thinned_tooth_thickness(backlash_mm),
             Self::Helical(g) => g.thinned_tooth_thickness(backlash_mm),
         }
     }
 
-    fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+    fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
         match self {
             Self::Spur(g) => g.normal_backlash(backlash_mm),
             Self::Helical(g) => g.normal_backlash(backlash_mm),

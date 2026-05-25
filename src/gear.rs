@@ -510,21 +510,23 @@ impl Gear {
     /// Typical values: 0.05–0.15 mm for precision gearboxes; up to 0.5 mm for
     /// coarse industrial drives.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `backlash_mm < 0.0`.
+    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
     /// use std::f64::consts::PI;
     ///
     /// let g = Gear::builder().module(2.0).teeth(20).build().unwrap();
-    /// let s = g.thinned_tooth_thickness(0.08);
+    /// let s = g.thinned_tooth_thickness(0.08).unwrap();
     /// assert!((s - (PI - 0.04)).abs() < 1e-10);
     /// ```
-    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
-        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
-        PI * self.module / 2.0 - backlash_mm / 2.0
+    pub fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+        if backlash_mm < 0.0 {
+            return Err(crate::BacklashError::NegativeBacklash);
+        }
+        Ok(PI * self.module / 2.0 - backlash_mm / 2.0)
     }
 
     /// Normal backlash from transverse backlash `jt` (mm): `jn = jt · cos(α)`.
@@ -537,21 +539,23 @@ impl Gear {
     /// Normal backlash is used in inspection because it can be measured directly
     /// with a feeler gauge at any point on the tooth face.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `backlash_mm < 0.0`.
+    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
     ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
     ///
     /// let g = Gear::builder().module(2.0).teeth(20).build().unwrap();
-    /// let jn = g.normal_backlash(0.08);
+    /// let jn = g.normal_backlash(0.08).unwrap();
     /// let expected = 0.08 * 20.0_f64.to_radians().cos();
     /// assert!((jn - expected).abs() < 1e-10);
     /// ```
-    pub fn normal_backlash(&self, backlash_mm: f64) -> f64 {
-        assert!(backlash_mm >= 0.0, "backlash must be non-negative, got {backlash_mm}");
-        backlash_mm * self.pressure_angle.to_radians().cos()
+    pub fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
+        if backlash_mm < 0.0 {
+            return Err(crate::BacklashError::NegativeBacklash);
+        }
+        Ok(backlash_mm * self.pressure_angle.to_radians().cos())
     }
 }
 
@@ -602,11 +606,11 @@ impl GearGeometry for Gear {
         self.diametral_pitch()
     }
 
-    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64 {
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
         self.thinned_tooth_thickness(backlash_mm)
     }
 
-    fn normal_backlash(&self, backlash_mm: f64) -> f64 {
+    fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError> {
         self.normal_backlash(backlash_mm)
     }
 }

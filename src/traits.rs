@@ -184,10 +184,10 @@ pub trait GearGeometry {
     /// For helical gears the projection also involves `cos(ψ)`:
     /// `sn' = π·mn/2 − (jt/2)·cos(ψ)`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `backlash_mm < 0.0`.
-    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> f64;
+    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
+    fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError>;
 
     /// Normal backlash from transverse backlash `jt` in mm.
     ///
@@ -196,10 +196,10 @@ pub trait GearGeometry {
     /// `jn = jt · cos(α)`. For helical gears the helix angle adds another
     /// cosine: `jn = jt · cos(αt) · cos(ψ)`.
     ///
-    /// # Panics
+    /// # Errors
     ///
-    /// Panics if `backlash_mm < 0.0`.
-    fn normal_backlash(&self, backlash_mm: f64) -> f64;
+    /// Returns [`BacklashError::NegativeBacklash`] if `backlash_mm < 0.0`.
+    fn normal_backlash(&self, backlash_mm: f64) -> Result<f64, crate::BacklashError>;
 
     // ── Pair operations (default implementations) ─────────────────────────────
 

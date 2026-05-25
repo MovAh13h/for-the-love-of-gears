@@ -65,8 +65,8 @@ fn main() {
     println!("BACKLASH  jt = 0.08 mm");
     let jt = 0.08;
     println!("  Theoretical thickness {:>8.4} mm  s = πmn/2", pinion.tooth_thickness());
-    println!("  Thinned thickness     {:>8.4} mm  s' = s − (jt/2)·cos ψ", pinion.thinned_tooth_thickness(jt));
-    println!("  Normal backlash jn    {:>8.4} mm  jt·cos αt·cos ψ", pinion.normal_backlash(jt));
+    println!("  Thinned thickness     {:>8.4} mm  s' = s − (jt/2)·cos ψ", pinion.thinned_tooth_thickness(jt).unwrap());
+    println!("  Normal backlash jn    {:>8.4} mm  jt·cos αt·cos ψ", pinion.normal_backlash(jt).unwrap());
 }
 
 fn hrow(label: &str, a: f64, b: f64, note: &str, w: usize) {
