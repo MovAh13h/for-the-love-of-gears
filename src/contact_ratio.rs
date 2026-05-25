@@ -54,5 +54,8 @@ pub(crate) fn overlap(face_width: f64, helix_angle_deg: f64, normal_module: f64)
 }
 
 fn path_of_contact(ra1: f64, rb1: f64, ra2: f64, rb2: f64, a: f64, alpha: f64) -> f64 {
-    (ra1.powi(2) - rb1.powi(2)).sqrt() + (ra2.powi(2) - rb2.powi(2)).sqrt() - a * alpha.sin()
+    // Tip radius must exceed base radius; if not (degenerate geometry), clamp to 0.
+    let approach = if ra1 > rb1 { (ra1.powi(2) - rb1.powi(2)).sqrt() } else { 0.0 };
+    let recess   = if ra2 > rb2 { (ra2.powi(2) - rb2.powi(2)).sqrt() } else { 0.0 };
+    (approach + recess - a * alpha.sin()).max(0.0)
 }
