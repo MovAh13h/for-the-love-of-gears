@@ -84,6 +84,8 @@ pub enum HelicalGearError {
     FaceWidthMustBePositive,
 }
 
+impl std::error::Error for HelicalGearError {}
+
 impl fmt::Display for HelicalGearError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

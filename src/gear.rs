@@ -59,6 +59,8 @@ pub enum GearError {
     PressureAngleMustBePositive,
 }
 
+impl std::error::Error for GearError {}
+
 impl fmt::Display for GearError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

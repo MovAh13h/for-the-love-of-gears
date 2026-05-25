@@ -17,13 +17,12 @@
 //! ```
 //! use for_the_love_of_gears::{
 //!     gear::Gear,
-//!     module::Module,
 //!     scene::{AnyGear, GearScene},
 //! };
 //!
 //! // Two-gear pair: 20-tooth driver → 40-tooth driven (2:1 reduction)
-//! let driver_gear = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
-//! let driven_gear = Gear::builder().module(Module::Specified(2.0)).teeth(40).build().unwrap();
+//! let driver_gear = Gear::builder().module(2.0).teeth(20).build().unwrap();
+//! let driven_gear = Gear::builder().module(2.0).teeth(40).build().unwrap();
 //!
 //! let scene = GearScene::builder()
 //!     .shaft("input",  vec![("a", AnyGear::from(driver_gear))])
@@ -33,7 +32,7 @@
 //!     .build()
 //!     .unwrap();
 //!
-//! let sim = scene.run(1000.0, 10.0).unwrap(); // 1000 rpm, 10 seconds
+//! let sim = scene.run(1000.0).unwrap(); // 1000 rpm
 //! assert_eq!(sim.rpm("output"), Some(500.0));  // 2:1 reduction
 //! assert_eq!(sim.ratio_to("output"), Some(2.0));
 //! ```
@@ -46,16 +45,14 @@
 //! ```
 //! use for_the_love_of_gears::{
 //!     gear::Gear,
-//!     module::Module,
 //!     scene::{AnyGear, GearScene},
 //! };
 //!
 //! // Stage 1: 20t → 40t (2:1).  Stage 2: 20t → 60t (3:1).  Total: 6:1.
-//! // Module must match within each mesh; different modules are fine across stages.
-//! let ga = Gear::builder().module(Module::Specified(2.0)).teeth(20).build().unwrap();
-//! let gb = Gear::builder().module(Module::Specified(2.0)).teeth(40).build().unwrap();
-//! let gc = Gear::builder().module(Module::Specified(3.0)).teeth(20).build().unwrap();
-//! let gd = Gear::builder().module(Module::Specified(3.0)).teeth(60).build().unwrap();
+//! let ga = Gear::builder().module(2.0).teeth(20).build().unwrap();
+//! let gb = Gear::builder().module(2.0).teeth(40).build().unwrap();
+//! let gc = Gear::builder().module(3.0).teeth(20).build().unwrap();
+//! let gd = Gear::builder().module(3.0).teeth(60).build().unwrap();
 //!
 //! let scene = GearScene::builder()
 //!     .shaft("input",        vec![("a", AnyGear::from(ga))])
@@ -67,7 +64,7 @@
 //!     .build()
 //!     .unwrap();
 //!
-//! let sim = scene.run(1000.0, 60.0).unwrap();
+//! let sim = scene.run(1000.0).unwrap();
 //! assert!((sim.rpm("output").unwrap() - 1000.0 / 6.0).abs() < 1e-9);
 //! assert!((sim.ratio_to("output").unwrap() - 6.0).abs() < 1e-9);
 //! ```
@@ -114,16 +111,8 @@ impl AnyGear {
     /// Module in mm (normal module for helical gears).
     pub fn module(&self) -> f64 {
         match self {
-            Self::Spur(g) => g.module().value(),
-            Self::Helical(g) => g.normal_module().value(),
-        }
-    }
-
-    /// Face width in mm, if set on the underlying gear.
-    pub fn face_width(&self) -> Option<f64> {
-        match self {
-            Self::Spur(g) => g.face_width(),
-            Self::Helical(g) => g.face_width(),
+            Self::Spur(g) => g.module(),
+            Self::Helical(g) => g.normal_module(),
         }
     }
 
@@ -204,9 +193,9 @@ pub enum GearSceneError {
     OverConstrainedShaft(String),
     /// Driver RPM must be greater than zero.
     DriverRpmMustBePositive,
-    /// Simulation duration must be greater than zero seconds.
-    DurationMustBePositive,
 }
+
+impl std::error::Error for GearSceneError {}
 
 impl fmt::Display for GearSceneError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -236,9 +225,6 @@ impl fmt::Display for GearSceneError {
                 "shaft '{s}' is over-constrained — two mesh paths imply different RPM values"
             ),
             Self::DriverRpmMustBePositive => write!(f, "driver RPM must be greater than zero"),
-            Self::DurationMustBePositive => {
-                write!(f, "simulation duration must be greater than zero")
-            }
         }
     }
 }
@@ -256,7 +242,6 @@ struct ShaftData {
 /// See the [module-level documentation](crate::scene) for examples.
 #[derive(Debug)]
 pub struct GearScene {
-    shafts: HashMap<String, ShaftData>,
     driver_shaft: String,
     states: HashMap<String, ShaftState>,
 }
@@ -267,27 +252,19 @@ impl GearScene {
         GearSceneBuilder::default()
     }
 
-    /// Run the scene at `driver_rpm` for `duration_secs` seconds.
+    /// Run the scene at `driver_rpm`.
     ///
-    /// Returns a [`GearSimulation`] from which you can query RPM, angle, total
-    /// rotations, and animation frames for any shaft.
+    /// Returns a [`GearSimulation`] from which you can query RPM, direction,
+    /// angle, total rotations, and animation frames for any shaft.
     ///
     /// The same scene can be run multiple times at different speeds.
     ///
     /// # Errors
     ///
     /// - [`GearSceneError::DriverRpmMustBePositive`] if `driver_rpm <= 0`
-    /// - [`GearSceneError::DurationMustBePositive`] if `duration_secs <= 0`
-    pub fn run(
-        &self,
-        driver_rpm: f64,
-        duration_secs: f64,
-    ) -> Result<GearSimulation, GearSceneError> {
+    pub fn run(&self, driver_rpm: f64) -> Result<GearSimulation, GearSceneError> {
         if driver_rpm <= 0.0 {
             return Err(GearSceneError::DriverRpmMustBePositive);
-        }
-        if duration_secs <= 0.0 {
-            return Err(GearSceneError::DurationMustBePositive);
         }
 
         let states = self
@@ -302,13 +279,12 @@ impl GearScene {
             states,
             driver_shaft: self.driver_shaft.clone(),
             driver_rpm,
-            duration_secs,
         })
     }
 
     /// The names of all shafts in this scene, in sorted order.
     pub fn shaft_names(&self) -> Vec<&str> {
-        sorted_keys(&self.shafts)
+        sorted_keys(&self.states)
     }
 }
 
@@ -327,10 +303,6 @@ impl GearSceneBuilder {
     ///
     /// Each gear entry is `(gear_name, gear)`. Gear names must be unique across
     /// the entire scene — no two gears on any shaft may share a name.
-    ///
-    /// The order of gears within a shaft defines their axial layout
-    /// (first-mounted to last-mounted), though axial interference checking is
-    /// not yet enforced.
     pub fn shaft<S: Into<String>>(mut self, name: &str, gears: Vec<(S, AnyGear)>) -> Self {
         self.shafts.push((
             name.to_string(),
@@ -453,7 +425,10 @@ impl GearSceneBuilder {
         // --- BFS: compute relative RPMs and directions ---
         // Driver shaft is normalised to relative RPM = 1.0 and Direction::Clockwise.
         let mut states: HashMap<String, ShaftState> = HashMap::new();
-        states.insert(driver_shaft.clone(), ShaftState { rpm: 1.0, direction: Direction::Clockwise });
+        states.insert(
+            driver_shaft.clone(),
+            ShaftState { rpm: 1.0, direction: Direction::Clockwise },
+        );
 
         let mut queue: VecDeque<String> = VecDeque::new();
         queue.push_back(driver_shaft.clone());
@@ -471,7 +446,10 @@ impl GearSceneBuilder {
                             return Err(GearSceneError::OverConstrainedShaft(neighbor.clone()));
                         }
                     } else {
-                        states.insert(neighbor.clone(), ShaftState { rpm: neighbor_rpm, direction: neighbor_dir });
+                        states.insert(
+                            neighbor.clone(),
+                            ShaftState { rpm: neighbor_rpm, direction: neighbor_dir },
+                        );
                         queue.push_back(neighbor.clone());
                     }
                 }
@@ -485,11 +463,7 @@ impl GearSceneBuilder {
             }
         }
 
-        Ok(GearScene {
-            shafts,
-            driver_shaft,
-            states,
-        })
+        Ok(GearScene { driver_shaft, states })
     }
 }
 
@@ -503,7 +477,6 @@ pub struct GearSimulation {
     states: HashMap<String, ShaftState>,
     driver_shaft: String,
     driver_rpm: f64,
-    duration_secs: f64,
 }
 
 impl GearSimulation {
@@ -518,12 +491,12 @@ impl GearSimulation {
         self.states.get(shaft).map(|s| s.direction)
     }
 
-    /// Total number of complete and partial rotations over the simulation duration,
+    /// Total rotations over `duration_secs` seconds,
     /// or `None` if the shaft name does not exist.
     ///
     /// `total_rotations = rpm × duration_secs / 60`
-    pub fn total_rotations(&self, shaft: &str) -> Option<f64> {
-        self.rpm(shaft).map(|r| r * self.duration_secs / 60.0)
+    pub fn total_rotations(&self, shaft: &str, duration_secs: f64) -> Option<f64> {
+        self.rpm(shaft).map(|r| r * duration_secs / 60.0)
     }
 
     /// Angular position of the shaft at time `t` seconds, in degrees `[0, 360)`,
@@ -540,8 +513,7 @@ impl GearSimulation {
     ///
     /// `ω = rpm × 2π / 60`
     pub fn angular_velocity_rad_s(&self, shaft: &str) -> Option<f64> {
-        self.rpm(shaft)
-            .map(|r| r * std::f64::consts::TAU / 60.0)
+        self.rpm(shaft).map(|r| r * std::f64::consts::TAU / 60.0)
     }
 
     /// Speed ratio from the driver to the named shaft: `driver_rpm / shaft_rpm`,
@@ -553,25 +525,24 @@ impl GearSimulation {
         self.rpm(shaft).map(|r| self.driver_rpm / r)
     }
 
-    /// Generate animation frames at `fps` frames per second.
+    /// Generate animation frames at `fps` frames per second over `duration_secs` seconds.
     ///
     /// Each frame contains the angular position (in degrees) of every shaft at
     /// that instant. The first frame is at `t = 0`; the last is at
     /// `duration_secs` or the nearest frame boundary.
-    pub fn frames(&self, fps: f64) -> Vec<SimFrame> {
-        let frame_count = (self.duration_secs * fps).ceil() as usize + 1;
+    pub fn frames(&self, fps: f64, duration_secs: f64) -> Vec<SimFrame> {
+        let frame_count = (duration_secs * fps).ceil() as usize + 1;
         (0..frame_count)
             .map(|i| {
-                let t = (i as f64 / fps).min(self.duration_secs);
+                let t = (i as f64 / fps).min(duration_secs);
                 let shaft_angles = self
                     .states
                     .iter()
-                    .map(|(s, state)| (s.clone(), (state.rpm / 60.0 * t * 360.0).rem_euclid(360.0)))
+                    .map(|(s, state)| {
+                        (s.clone(), (state.rpm / 60.0 * t * 360.0).rem_euclid(360.0))
+                    })
                     .collect();
-                SimFrame {
-                    time_secs: t,
-                    shaft_angles,
-                }
+                SimFrame { time_secs: t, shaft_angles }
             })
             .collect()
     }
@@ -592,11 +563,6 @@ impl GearSimulation {
     /// The driver RPM this simulation was run at.
     pub fn driver_rpm(&self) -> f64 {
         self.driver_rpm
-    }
-
-    /// The simulation duration in seconds.
-    pub fn duration_secs(&self) -> f64 {
-        self.duration_secs
     }
 }
 
