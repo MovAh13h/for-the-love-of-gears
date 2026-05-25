@@ -235,13 +235,6 @@ impl Gear {
         self.pressure_angle
     }
 
-    /// Normal pressure angle in degrees — alias for [`pressure_angle`] for symmetry with `HelicalGear`.
-    ///
-    /// [`pressure_angle`]: Gear::pressure_angle
-    pub fn normal_pressure_angle(&self) -> f64 {
-        self.pressure_angle
-    }
-
     // ── Diameters (mm) ────────────────────────────────────────────────────────
 
     /// Pitch circle diameter in mm: `d = m · z`.
@@ -362,13 +355,6 @@ impl Gear {
     /// are equal — which is equivalent to requiring equal modules.
     pub fn circular_pitch(&self) -> f64 {
         PI * self.module
-    }
-
-    /// Normal circular pitch in mm — alias for [`circular_pitch`] for symmetry with `HelicalGear`.
-    ///
-    /// [`circular_pitch`]: Gear::circular_pitch
-    pub fn normal_circular_pitch(&self) -> f64 {
-        self.circular_pitch()
     }
 
     /// Teeth per inch of pitch diameter (imperial): `DP = 25.4 / m`.
