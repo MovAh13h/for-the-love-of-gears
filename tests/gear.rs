@@ -44,6 +44,27 @@ fn build_rejects_zero_teeth() {
 }
 
 #[test]
+fn build_rejects_one_tooth() {
+    assert_eq!(
+        Gear::builder().module(2.0).teeth(1).build(),
+        Err(GearError::TeethTooFew)
+    );
+}
+
+#[test]
+fn build_rejects_two_teeth() {
+    assert_eq!(
+        Gear::builder().module(2.0).teeth(2).build(),
+        Err(GearError::TeethTooFew)
+    );
+}
+
+#[test]
+fn build_accepts_three_teeth() {
+    assert!(Gear::builder().module(2.0).teeth(3).build().is_ok());
+}
+
+#[test]
 fn build_rejects_zero_pressure_angle() {
     assert_eq!(
         Gear::builder().module(2.0).teeth(20).pressure_angle(0.0).build(),

@@ -66,6 +66,33 @@ fn build_rejects_zero_teeth() {
 }
 
 #[test]
+fn build_rejects_one_tooth() {
+    assert_eq!(
+        HelicalGear::builder()
+            .module(2.0).teeth(1).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+        Err(HelicalGearError::TeethTooFew)
+    );
+}
+
+#[test]
+fn build_rejects_two_teeth() {
+    assert_eq!(
+        HelicalGear::builder()
+            .module(2.0).teeth(2).helix_angle(20.0).helix_hand(HelixHand::Right).build(),
+        Err(HelicalGearError::TeethTooFew)
+    );
+}
+
+#[test]
+fn build_accepts_three_teeth() {
+    assert!(
+        HelicalGear::builder()
+            .module(2.0).teeth(3).helix_angle(20.0).helix_hand(HelixHand::Right).build()
+            .is_ok()
+    );
+}
+
+#[test]
 fn build_rejects_zero_helix_angle() {
     assert_eq!(
         HelicalGear::builder()

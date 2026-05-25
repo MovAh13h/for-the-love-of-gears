@@ -50,6 +50,11 @@ pub enum GearError {
     ModuleMustBePositive,
     /// Tooth count must be at least 1.
     TeethMustBePositive,
+    /// Tooth count must be at least 3 to produce a positive root diameter.
+    ///
+    /// With fewer than 3 teeth the dedendum exceeds the pitch radius and
+    /// `df = m(z − 2.5)` becomes zero or negative, which is geometrically invalid.
+    TeethTooFew,
     /// Pressure angle must be greater than zero degrees.
     PressureAngleMustBePositive,
 }
@@ -61,6 +66,10 @@ impl fmt::Display for GearError {
             Self::TeethRequired => write!(f, "teeth count is required"),
             Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
             Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
+            Self::TeethTooFew => write!(
+                f,
+                "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
+            ),
             Self::PressureAngleMustBePositive => {
                 write!(f, "pressure angle must be greater than zero degrees")
             }
@@ -312,6 +321,10 @@ impl Gear {
 ///     Gear::builder().module(0.0).teeth(20).build(),
 ///     Err(GearError::ModuleMustBePositive)
 /// );
+/// assert_eq!(
+///     Gear::builder().module(2.0).teeth(2).build(),
+///     Err(GearError::TeethTooFew)
+/// );
 /// ```
 #[derive(Debug, Default)]
 pub struct GearBuilder {
@@ -349,6 +362,9 @@ impl GearBuilder {
         }
         if teeth == 0 {
             return Err(GearError::TeethMustBePositive);
+        }
+        if teeth < 3 {
+            return Err(GearError::TeethTooFew);
         }
 
         let pressure_angle = self.pressure_angle.unwrap_or(DEFAULT_PRESSURE_ANGLE);

@@ -69,6 +69,11 @@ pub enum HelicalGearError {
     ModuleMustBePositive,
     /// Tooth count must be at least 1.
     TeethMustBePositive,
+    /// Tooth count must be at least 3 to produce a positive root diameter.
+    ///
+    /// With fewer than 3 teeth the dedendum exceeds the pitch radius and
+    /// `df = mt·z − 2.5·mn` becomes zero or negative for any practical helix angle.
+    TeethTooFew,
     /// Helix angle must be greater than zero degrees.
     HelixAngleMustBePositive,
     /// Helix angle must be less than 90 degrees.
@@ -88,6 +93,10 @@ impl fmt::Display for HelicalGearError {
             Self::HelixHandRequired => write!(f, "helix hand is required"),
             Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
             Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
+            Self::TeethTooFew => write!(
+                f,
+                "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
+            ),
             Self::HelixAngleMustBePositive => {
                 write!(f, "helix angle must be greater than zero degrees")
             }
@@ -620,6 +629,9 @@ impl HelicalGearBuilder {
         }
         if teeth == 0 {
             return Err(HelicalGearError::TeethMustBePositive);
+        }
+        if teeth < 3 {
+            return Err(HelicalGearError::TeethTooFew);
         }
         if helix_angle <= 0.0 {
             return Err(HelicalGearError::HelixAngleMustBePositive);
