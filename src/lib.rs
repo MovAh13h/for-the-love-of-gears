@@ -89,6 +89,83 @@ pub mod module;
 pub mod scene;
 pub mod traits;
 
+/// Errors returned by gear builder [`build`] methods.
+///
+/// This is the single error type for both [`GearBuilder`] and [`HelicalGearBuilder`].
+/// Variants that are not applicable to a given builder are never produced by it —
+/// for example, `HelixAngleRequired` will never be returned by `GearBuilder::build`.
+///
+/// [`build`]: crate::gear::GearBuilder::build
+/// [`GearBuilder`]: crate::gear::GearBuilder
+/// [`HelicalGearBuilder`]: crate::helical::HelicalGearBuilder
+#[derive(Debug, PartialEq)]
+#[non_exhaustive]
+pub enum GearError {
+    /// `.module()` was not called on the builder.
+    ModuleRequired,
+
+    /// `.teeth()` was not called on the builder.
+    TeethRequired,
+
+    /// `.helix_angle()` was not called on the builder (helical gears only).
+    HelixAngleRequired,
+
+    /// `.helix_hand()` was not called on the builder (helical gears only).
+    HelixHandRequired,
+
+    /// Module must be strictly greater than zero.
+    ModuleMustBePositive,
+
+    /// Tooth count must be at least 1.
+    TeethMustBePositive,
+
+    /// Tooth count must be at least [`MIN_TEETH`] (3).
+    ///
+    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
+    TeethTooFew,
+
+    /// Helix angle must be strictly greater than zero degrees (helical gears only).
+    HelixAngleMustBePositive,
+
+    /// Helix angle must be strictly less than 90 degrees (helical gears only).
+    HelixAngleMustBeLessThan90,
+
+    /// Pressure angle must be strictly greater than zero degrees.
+    PressureAngleMustBePositive,
+
+    /// Face width must be strictly greater than zero (helical gears only).
+    FaceWidthMustBePositive,
+}
+
+impl std::error::Error for GearError {}
+
+impl fmt::Display for GearError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ModuleRequired => write!(f, "module is required"),
+            Self::TeethRequired => write!(f, "teeth count is required"),
+            Self::HelixAngleRequired => write!(f, "helix angle is required"),
+            Self::HelixHandRequired => write!(f, "helix hand is required"),
+            Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
+            Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
+            Self::TeethTooFew => write!(
+                f,
+                "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
+            ),
+            Self::HelixAngleMustBePositive => {
+                write!(f, "helix angle must be greater than zero degrees")
+            }
+            Self::HelixAngleMustBeLessThan90 => {
+                write!(f, "helix angle must be less than 90 degrees")
+            }
+            Self::PressureAngleMustBePositive => {
+                write!(f, "pressure angle must be greater than zero degrees")
+            }
+            Self::FaceWidthMustBePositive => write!(f, "face width must be greater than zero"),
+        }
+    }
+}
+
 /// Error returned by backlash methods when the supplied backlash value is negative.
 #[derive(Debug, PartialEq)]
 #[non_exhaustive]

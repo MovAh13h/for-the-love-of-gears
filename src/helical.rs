@@ -79,7 +79,6 @@
 //! [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
 
 use std::f64::consts::PI;
-use std::fmt;
 
 use crate::{
     constants::{
@@ -95,101 +94,7 @@ const DEFAULT_NORMAL_PRESSURE_ANGLE: f64 = crate::constants::ISO_PRESSURE_ANGLE_
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
-/// Errors returned by [`HelicalGearBuilder::build`].
-#[derive(Debug, PartialEq)]
-#[non_exhaustive]
-pub enum HelicalGearError {
-    /// `.module()` was not called on the builder.
-    ModuleRequired,
-
-    /// `.teeth()` was not called on the builder.
-    TeethRequired,
-
-    /// `.helix_angle()` was not called on the builder.
-    HelixAngleRequired,
-
-    /// `.helix_hand()` was not called on the builder.
-    HelixHandRequired,
-
-    /// Module must be strictly greater than zero.
-    ///
-    /// The normal module `mn` is the tooth-size parameter measured in the normal
-    /// plane. Like the spur-gear module it must be a positive length in mm.
-    ModuleMustBePositive,
-
-    /// Tooth count must be at least 1.
-    ///
-    /// A gear with zero teeth cannot transmit motion.
-    TeethMustBePositive,
-
-    /// Tooth count must be at least [`MIN_TEETH`] (3).
-    ///
-    /// The root diameter `df = mt·z − 2.5·mn` must be positive. For any
-    /// practical helix angle where `cos(ψ) < 1`, the transverse module
-    /// `mt = mn / cos(ψ)` is larger than `mn`, which relaxes the limit
-    /// slightly — but `z ≥ 3` is the safe, conservative minimum for all
-    /// standard helix angles.
-    ///
-    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
-    TeethTooFew,
-
-    /// Helix angle must be strictly greater than zero degrees.
-    ///
-    /// A zero helix angle is a spur gear — use [`crate::gear::Gear`] for that
-    /// case. The helix angle must be in the open interval `(0°, 90°)`.
-    HelixAngleMustBePositive,
-
-    /// Helix angle must be strictly less than 90 degrees.
-    ///
-    /// At exactly 90° the tooth helix runs parallel to the shaft axis, meaning
-    /// the tooth never progresses across the face — a degenerate geometry that
-    /// cannot transmit motion. In practice angles above ~35° already produce
-    /// very large axial thrust forces.
-    HelixAngleMustBeLessThan90,
-
-    /// Normal pressure angle must be strictly greater than zero degrees.
-    ///
-    /// A zero normal pressure angle would produce a vertical tooth flank in the
-    /// normal plane — one that can transmit no tangential force. Negative values
-    /// have no physical meaning.
-    PressureAngleMustBePositive,
-
-    /// Face width must be strictly greater than zero.
-    ///
-    /// Face width is an optional parameter, but when provided it must be a
-    /// positive length in mm. It is required for computing the overlap ratio
-    /// `εβ` and total contact ratio `εγ`.
-    FaceWidthMustBePositive,
-}
-
-impl std::error::Error for HelicalGearError {}
-
-impl fmt::Display for HelicalGearError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ModuleRequired => write!(f, "module is required"),
-            Self::TeethRequired => write!(f, "teeth count is required"),
-            Self::HelixAngleRequired => write!(f, "helix angle is required"),
-            Self::HelixHandRequired => write!(f, "helix hand is required"),
-            Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
-            Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
-            Self::TeethTooFew => write!(
-                f,
-                "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
-            ),
-            Self::HelixAngleMustBePositive => {
-                write!(f, "helix angle must be greater than zero degrees")
-            }
-            Self::HelixAngleMustBeLessThan90 => {
-                write!(f, "helix angle must be less than 90 degrees")
-            }
-            Self::PressureAngleMustBePositive => {
-                write!(f, "pressure angle must be greater than zero degrees")
-            }
-            Self::FaceWidthMustBePositive => write!(f, "face width must be greater than zero"),
-        }
-    }
-}
+pub use crate::GearError as HelicalGearError;
 
 // ── Helix hand ────────────────────────────────────────────────────────────────
 

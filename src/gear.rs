@@ -62,7 +62,7 @@
 //!
 //! [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
 
-use std::{f64::consts::PI, fmt};
+use std::f64::consts::PI;
 
 use crate::{
     constants::{
@@ -78,65 +78,7 @@ const DEFAULT_PRESSURE_ANGLE: f64 = crate::constants::ISO_PRESSURE_ANGLE_DEG;
 
 // ── Error type ────────────────────────────────────────────────────────────────
 
-/// Errors returned by [`GearBuilder::build`].
-#[derive(Debug, PartialEq)]
-#[non_exhaustive]
-pub enum GearError {
-    /// `.module()` was not called on the builder.
-    ModuleRequired,
-
-    /// `.teeth()` was not called on the builder.
-    TeethRequired,
-
-    /// Module must be strictly greater than zero.
-    ///
-    /// A zero or negative module has no physical meaning — it would imply a
-    /// gear with zero or inverted tooth size. The module is the ratio of pitch
-    /// diameter to tooth count and must be a positive length in mm.
-    ModuleMustBePositive,
-
-    /// Tooth count must be at least 1.
-    ///
-    /// A gear with zero teeth cannot transmit motion.
-    TeethMustBePositive,
-
-    /// Tooth count must be at least [`MIN_TEETH`] (3).
-    ///
-    /// With the standard dedendum coefficient of 1.25, the root diameter
-    /// formula `df = m(z − 2.5)` equals zero at `z = 2.5` and goes negative
-    /// for `z = 1` or `z = 2`. A negative root diameter is geometrically
-    /// invalid — the teeth would extend past the centre of the gear.
-    ///
-    /// [`MIN_TEETH`]: crate::constants::MIN_TEETH
-    TeethTooFew,
-
-    /// Pressure angle must be strictly greater than zero degrees.
-    ///
-    /// A zero pressure angle would produce a vertical tooth flank — one that
-    /// transmits force purely radially with no tangential component. The gear
-    /// could not drive a load. Negative values have no physical meaning.
-    PressureAngleMustBePositive,
-}
-
-impl std::error::Error for GearError {}
-
-impl fmt::Display for GearError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ModuleRequired => write!(f, "module is required"),
-            Self::TeethRequired => write!(f, "teeth count is required"),
-            Self::ModuleMustBePositive => write!(f, "module must be greater than zero"),
-            Self::TeethMustBePositive => write!(f, "teeth count must be at least 1"),
-            Self::TeethTooFew => write!(
-                f,
-                "teeth count must be at least 3 (fewer teeth produce a non-positive root diameter)"
-            ),
-            Self::PressureAngleMustBePositive => {
-                write!(f, "pressure angle must be greater than zero degrees")
-            }
-        }
-    }
-}
+pub use crate::GearError;
 
 // ── Gear type ─────────────────────────────────────────────────────────────────
 
