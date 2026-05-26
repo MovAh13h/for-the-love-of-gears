@@ -159,7 +159,8 @@ struct ShaftState {
 /// is implemented for this type.
 ///
 /// [`GearGeometry`]: crate::traits::GearGeometry
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum AnyGear {
     /// A standard spur gear.
     Spur(Gear),
@@ -309,6 +310,7 @@ impl GearGeometry for AnyGear {
 ///
 /// [`Clockwise`]: Direction::Clockwise
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Direction {
     /// Same rotation sense as the driver shaft.
     ///
@@ -333,6 +335,7 @@ impl Direction {
 
 /// Errors returned when building or running a [`GearScene`].
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum GearSceneError {
     /// Two shafts were given the same name.
@@ -1088,6 +1091,7 @@ impl GearSimulation {
 ///
 /// All angles are in degrees and wrapped to `[0°, 360°)`.
 #[derive(Debug, Clone)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SimFrame {
     /// Time of this frame in seconds from the start of the simulation (`t = 0`).
     pub time_secs: f64,

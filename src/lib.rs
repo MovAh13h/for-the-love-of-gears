@@ -99,6 +99,7 @@ pub mod traits;
 /// [`GearBuilder`]: crate::gear::GearBuilder
 /// [`HelicalGearBuilder`]: crate::helical::HelicalGearBuilder
 #[derive(Debug, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[non_exhaustive]
 pub enum GearError {
     /// `.module()` was not called on the builder.

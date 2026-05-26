@@ -11,7 +11,12 @@ homepage = "https://github.com/MovAh13h/for-the-love-of-gears"
 documentation = "https://docs.rs/for_the_love_of_gears"
 readme = "README.md"
 
+[features]
+serde = ["dep:serde"]
+
 [dependencies]
+serde = { version = "1", features = ["derive"], optional = true }
 
 [dev-dependencies]
 proptest = "1"
+serde_json = "1"

@@ -104,6 +104,7 @@ pub use crate::GearError as HelicalGearError;
 /// Two helical gears on parallel shafts must have **opposite hands** to mesh.
 /// On crossed shafts (not supported by this library) the hands can be the same.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum HelixHand {
     /// Teeth wind upward to the left (like a left-handed screw).
     Left,
@@ -217,6 +218,7 @@ impl fmt::Display for HelixHand {
 /// assert!(g.normal_backlash(jt).unwrap() < jt);
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HelicalGear {
     module: f64,
     teeth: u32,

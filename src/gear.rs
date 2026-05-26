@@ -116,6 +116,7 @@ pub use crate::GearError;
 /// assert_eq!(g.clearance(),   0.5);  // c  = 0.25m
 /// ```
 #[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Gear {
     module: f64,
     teeth: u32,
