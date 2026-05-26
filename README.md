@@ -256,6 +256,51 @@ for frame in &frames {
 
 ---
 
+## Display
+
+Every gear type implements `Display` for quick human-readable output — useful for logging, debugging, or printing gear specs to a user.
+
+```rust
+use for_the_love_of_gears::gear::Gear;
+use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+
+let g = Gear::builder().module(2.0).teeth(20).build()?;
+println!("{g}");
+// Gear { m=2, z=20, α=20° }
+
+let h = HelicalGear::builder()
+    .module(2.0).teeth(20)
+    .helix_angle(20.0).helix_hand(HelixHand::Right)
+    .face_width(30.0)
+    .build()?;
+println!("{h}");
+// HelicalGear { mn=2, z=20, ψ=20° right-hand, αn=20°, b=30 }
+```
+
+---
+
+## Serialisation (serde)
+
+Enable the `serde` feature to derive `Serialize` and `Deserialize` for all public types:
+
+```toml
+[dependencies]
+for_the_love_of_gears = { version = "0.1", features = ["serde"] }
+```
+
+```rust
+use for_the_love_of_gears::gear::Gear;
+
+let g = Gear::builder().module(2.0).teeth(20).build()?;
+let json = serde_json::to_string(&g)?;
+let back: Gear = serde_json::from_str(&json)?;
+assert_eq!(g, back);
+```
+
+All gear types (`Gear`, `HelicalGear`, `HelixHand`, `AnyGear`), direction and frame types (`Direction`, `SimFrame`), and error types (`GearError`, `GearSceneError`) are covered.
+
+---
+
 ## Generic code over any gear type
 
 `GearGeometry` is implemented by `Gear`, `HelicalGear`, and `AnyGear`. Write functions that accept any gear without caring which type it is:
