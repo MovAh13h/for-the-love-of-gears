@@ -79,6 +79,7 @@
 //! [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
 
 use std::f64::consts::PI;
+use std::fmt;
 
 use crate::{
     constants::{
@@ -115,6 +116,22 @@ impl HelixHand {
         match self {
             Self::Left => Self::Right,
             Self::Right => Self::Left,
+        }
+    }
+}
+
+impl fmt::Display for HelixHand {
+    /// Formats as `"left-hand"` or `"right-hand"`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::HelixHand;
+    /// assert_eq!(HelixHand::Left.to_string(),  "left-hand");
+    /// assert_eq!(HelixHand::Right.to_string(), "right-hand");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Left  => write!(f, "left-hand"),
+            Self::Right => write!(f, "right-hand"),
         }
     }
 }
@@ -777,6 +794,40 @@ impl GearGeometry for HelicalGear {
 
     fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         self.normal_backlash(backlash_mm)
+    }
+}
+
+// ── Display ───────────────────────────────────────────────────────────────────
+
+impl fmt::Display for HelicalGear {
+    /// Formats as `HelicalGear { mn=2, z=20, ψ=20° right-hand, αn=20° }`.
+    /// When a face width is set, `, b=30` is appended before the closing brace.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::helical::{HelicalGear, HelixHand};
+    ///
+    /// let g = HelicalGear::builder()
+    ///     .module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Right)
+    ///     .build().unwrap();
+    /// assert_eq!(g.to_string(), "HelicalGear { mn=2, z=20, ψ=20° right-hand, αn=20° }");
+    ///
+    /// let g2 = HelicalGear::builder()
+    ///     .module(2.0).teeth(20)
+    ///     .helix_angle(20.0).helix_hand(HelixHand::Left)
+    ///     .face_width(30.0).build().unwrap();
+    /// assert_eq!(g2.to_string(), "HelicalGear { mn=2, z=20, ψ=20° left-hand, αn=20°, b=30 }");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "HelicalGear {{ mn={}, z={}, ψ={}° {}, αn={}°",
+            self.module, self.teeth, self.helix_angle, self.helix_hand, self.normal_pressure_angle,
+        )?;
+        if let Some(b) = self.face_width {
+            write!(f, ", b={b}")?;
+        }
+        write!(f, " }}")
     }
 }
 

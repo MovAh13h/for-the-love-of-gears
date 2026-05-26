@@ -63,6 +63,7 @@
 //! [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
 
 use std::f64::consts::PI;
+use std::fmt;
 
 use crate::{
     constants::{
@@ -576,6 +577,25 @@ impl GearGeometry for Gear {
 
     fn normal_backlash(&self, backlash_mm: f64) -> Option<f64> {
         self.normal_backlash(backlash_mm)
+    }
+}
+
+// ── Display ───────────────────────────────────────────────────────────────────
+
+impl fmt::Display for Gear {
+    /// Formats as `Gear { m=2, z=20, α=20° }`.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::gear::Gear;
+    ///
+    /// let g = Gear::builder().module(2.0).teeth(20).build().unwrap();
+    /// assert_eq!(g.to_string(), "Gear { m=2, z=20, α=20° }");
+    ///
+    /// let g2 = Gear::builder().module(2.5).teeth(17).pressure_angle(14.5).build().unwrap();
+    /// assert_eq!(g2.to_string(), "Gear { m=2.5, z=17, α=14.5° }");
+    /// ```
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Gear {{ m={}, z={}, α={}° }}", self.module, self.teeth, self.pressure_angle)
     }
 }
 
