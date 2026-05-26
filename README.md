@@ -18,7 +18,7 @@ ISO-standard gear geometry for Rust. Give a gear its module and tooth count; get
 
 ```toml
 [dependencies]
-for_the_love_of_gears = "0.2"
+for_the_love_of_gears = "0.1"
 ```
 
 ## What's included

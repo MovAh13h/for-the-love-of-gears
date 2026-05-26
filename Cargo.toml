@@ -1,6 +1,6 @@
 [package]
 name = "for_the_love_of_gears"
-version = "0.2.0"
+version = "0.1.2"
 edition = "2024"
 description = "ISO-standard involute gear geometry: spur and helical gears, tooth profile, contact ratio, backlash, and multi-stage kinematic simulation."
 license = "MIT"
