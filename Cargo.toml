@@ -1,8 +1,8 @@
 [package]
 name = "for_the_love_of_gears"
-version = "0.1.1"
+version = "0.2.0"
 edition = "2024"
-description = "ISO-standard gear geometry — module, pitch, tooth profile, diameters, and centre distance."
+description = "ISO-standard involute gear geometry: spur and helical gears, tooth profile, contact ratio, backlash, and multi-stage kinematic simulation."
 license = "MIT"
 keywords = ["gear", "mechanical", "engineering", "iso", "geometry"]
 categories = ["science", "mathematics"]
