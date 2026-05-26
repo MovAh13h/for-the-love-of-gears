@@ -28,37 +28,37 @@ for_the_love_of_gears = "0.1"
 - **Contact ratio** — transverse εα, overlap εβ (helical), total εγ
 - **Backlash** — circular and normal backlash; thinned tooth thickness
 - **Gear scenes** — mount gears on named shafts, declare meshes, run a kinematic simulation to query RPM, rotation direction, and angular position
-- **Type-safe outputs** — every result is a distinct type (`ReferenceDiameter`, `ToothThickness`, …) so you can't accidentally mix up values
+- **Interference and undercutting** — `interferes_with` and `is_undercut` checks for both gear types
 
 ## Usage
 
 ```rust
-use for_the_love_of_gears::{gear::Gear, module::Module, scene::{AnyGear, GearScene}};
+use for_the_love_of_gears::{gear::Gear, scene::{AnyGear, GearScene}};
 
 // A 2:1 spur reduction
-let pinion = Gear::builder().module(Module::Specified(2.0)).teeth(20).build()?;
-let wheel  = Gear::builder().module(Module::Specified(2.0)).teeth(40).build()?;
+let pinion = Gear::builder().module(2.0).teeth(20).build()?;
+let wheel  = Gear::builder().module(2.0).teeth(40).build()?;
 
-println!("pitch diameter:  {} mm",  pinion.reference_diameter().value()); // 40 mm
-println!("centre distance: {} mm",  pinion.center_distance_to(&wheel).value()); // 60 mm
-println!("contact ratio:   {:.3}",  pinion.contact_ratio_with(&wheel).value()); // 1.635
+println!("pitch diameter:  {} mm",  pinion.reference_diameter()); // 40 mm
+println!("centre distance: {} mm",  pinion.center_distance_to(&wheel)); // 60 mm
+println!("contact ratio:   {:.3}",  pinion.contact_ratio_with(&wheel).unwrap()); // 1.635
 
 // Simulate a two-stage 6:1 compound train
 let scene = GearScene::builder()
     .shaft("input",        vec![("a", AnyGear::from(pinion))])
     .shaft("intermediate", vec![
         ("b", AnyGear::from(wheel)),
-        ("c", AnyGear::from(Gear::builder().module(Module::Specified(3.0)).teeth(20).build()?)),
+        ("c", AnyGear::from(Gear::builder().module(3.0).teeth(20).build()?)),
     ])
     .shaft("output", vec![("d", AnyGear::from(
-        Gear::builder().module(Module::Specified(3.0)).teeth(60).build()?
+        Gear::builder().module(3.0).teeth(60).build()?
     ))])
     .mesh("a", "b").mesh("c", "d")
     .driver("input")
     .build()?;
 
-let sim = scene.run(1200.0, 10.0)?;
-println!("output: {:.0} rpm", sim.rpm("output")); // 200 rpm
+let sim = scene.run(1200.0)?;
+println!("output: {:.0} rpm", sim.rpm("output").unwrap()); // 200 rpm
 ```
 
 ## License

@@ -72,10 +72,6 @@ use crate::{
     traits::GearGeometry,
 };
 
-/// The ISO standard pressure angle in degrees, used when the caller does not
-/// specify one. See [`crate::constants::ISO_PRESSURE_ANGLE_DEG`].
-const DEFAULT_PRESSURE_ANGLE: f64 = crate::constants::ISO_PRESSURE_ANGLE_DEG;
-
 // ── Error type ────────────────────────────────────────────────────────────────
 
 pub use crate::GearError;
@@ -167,12 +163,14 @@ impl Gear {
 
     /// Pressure angle `α` in degrees.
     ///
-    /// Default is [`DEFAULT_PRESSURE_ANGLE`] (20°, per ISO 21771). The pressure
+    /// Default is [`ISO_PRESSURE_ANGLE_DEG`] (20°, per ISO 21771). The pressure
     /// angle is the angle between the tooth normal force and the tangent to the
     /// pitch circle. A larger angle means:
     /// - **Stronger teeth** — more material in the root cross-section
     /// - **Higher radial load** on the bearings — force has a larger radial component
     /// - **Less risk of undercutting** on small tooth counts
+    ///
+    /// [`ISO_PRESSURE_ANGLE_DEG`]: crate::constants::ISO_PRESSURE_ANGLE_DEG
     pub fn pressure_angle(&self) -> f64 {
         self.pressure_angle
     }
@@ -398,6 +396,12 @@ impl Gear {
     /// with two pairs of teeth in contact and 40% with only one pair — the load
     /// is shared most of the time.
     ///
+    /// For spur gears this is the full contact ratio. Helical gears have an
+    /// additional overlap ratio `εβ`; see
+    /// [`HelicalGear::total_contact_ratio_with`].
+    ///
+    /// [`HelicalGear::total_contact_ratio_with`]: crate::helical::HelicalGear::total_contact_ratio_with
+    ///
     /// ```
     /// use for_the_love_of_gears::gear::Gear;
     ///
@@ -418,14 +422,6 @@ impl Gear {
             self.pressure_angle,
             self.module,
         ))
-    }
-
-    /// Transverse contact ratio `εα` with `other` — alias for [`contact_ratio_with`] for
-    /// symmetry with `HelicalGear::transverse_contact_ratio_with`.
-    ///
-    /// [`contact_ratio_with`]: Gear::contact_ratio_with
-    pub fn transverse_contact_ratio_with(&self, other: &Gear) -> Option<f64> {
-        self.contact_ratio_with(other)
     }
 
     // ── Backlash ──────────────────────────────────────────────────────────────
@@ -536,27 +532,14 @@ impl Gear {
         if !self.can_mesh_with(other) {
             return None;
         }
-        let alpha = self.pressure_angle.to_radians();
-        let a = self.center_distance_to(other);
-        let limit = a * alpha.sin();
-
-        let ra1 = self.tip_diameter() / 2.0;
-        let rb1 = self.base_diameter() / 2.0;
-        let ra2 = other.tip_diameter() / 2.0;
-        let rb2 = other.base_diameter() / 2.0;
-
-        let reach1 = if ra1 > rb1 {
-            (ra1 * ra1 - rb1 * rb1).sqrt()
-        } else {
-            0.0
-        };
-        let reach2 = if ra2 > rb2 {
-            (ra2 * ra2 - rb2 * rb2).sqrt()
-        } else {
-            0.0
-        };
-
-        Some(reach1 > limit || reach2 > limit)
+        Some(crate::contact_ratio::interference(
+            self.tip_diameter() / 2.0,
+            self.base_diameter() / 2.0,
+            other.tip_diameter() / 2.0,
+            other.base_diameter() / 2.0,
+            self.center_distance_to(other),
+            self.pressure_angle,
+        ))
     }
 }
 
@@ -585,25 +568,6 @@ impl GearGeometry for Gear {
 
     fn base_diameter(&self) -> f64 {
         self.base_diameter()
-    }
-
-    fn addendum(&self) -> f64 {
-        self.addendum()
-    }
-    fn dedendum(&self) -> f64 {
-        self.dedendum()
-    }
-    fn tooth_depth(&self) -> f64 {
-        self.tooth_depth()
-    }
-    fn clearance(&self) -> f64 {
-        self.clearance()
-    }
-    fn tooth_thickness(&self) -> f64 {
-        self.tooth_thickness()
-    }
-    fn diametral_pitch(&self) -> f64 {
-        self.diametral_pitch()
     }
 
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
@@ -705,7 +669,9 @@ impl GearBuilder {
         Ok(Gear {
             module,
             teeth,
-            pressure_angle: self.pressure_angle.unwrap_or(DEFAULT_PRESSURE_ANGLE),
+            pressure_angle: self
+                .pressure_angle
+                .unwrap_or(crate::constants::ISO_PRESSURE_ANGLE_DEG),
         })
     }
 }

@@ -88,10 +88,6 @@ use crate::{
     traits::GearGeometry,
 };
 
-/// The ISO standard normal pressure angle, used when the caller does not specify one.
-/// See [`crate::constants::ISO_PRESSURE_ANGLE_DEG`].
-const DEFAULT_NORMAL_PRESSURE_ANGLE: f64 = crate::constants::ISO_PRESSURE_ANGLE_DEG;
-
 // ── Error type ────────────────────────────────────────────────────────────────
 
 pub use crate::GearError as HelicalGearError;
@@ -737,27 +733,14 @@ impl HelicalGear {
         if !self.can_mesh_with(other) {
             return None;
         }
-        let alpha_t = self.transverse_pressure_angle().to_radians();
-        let a = self.center_distance_to(other);
-        let limit = a * alpha_t.sin();
-
-        let ra1 = self.tip_diameter() / 2.0;
-        let rb1 = self.base_diameter() / 2.0;
-        let ra2 = other.tip_diameter() / 2.0;
-        let rb2 = other.base_diameter() / 2.0;
-
-        let reach1 = if ra1 > rb1 {
-            (ra1 * ra1 - rb1 * rb1).sqrt()
-        } else {
-            0.0
-        };
-        let reach2 = if ra2 > rb2 {
-            (ra2 * ra2 - rb2 * rb2).sqrt()
-        } else {
-            0.0
-        };
-
-        Some(reach1 > limit || reach2 > limit)
+        Some(crate::contact_ratio::interference(
+            self.tip_diameter() / 2.0,
+            self.base_diameter() / 2.0,
+            other.tip_diameter() / 2.0,
+            other.base_diameter() / 2.0,
+            self.center_distance_to(other),
+            self.transverse_pressure_angle(),
+        ))
     }
 }
 
@@ -786,25 +769,6 @@ impl GearGeometry for HelicalGear {
 
     fn base_diameter(&self) -> f64 {
         self.base_diameter()
-    }
-
-    fn addendum(&self) -> f64 {
-        self.addendum()
-    }
-    fn dedendum(&self) -> f64 {
-        self.dedendum()
-    }
-    fn tooth_depth(&self) -> f64 {
-        self.tooth_depth()
-    }
-    fn clearance(&self) -> f64 {
-        self.clearance()
-    }
-    fn tooth_thickness(&self) -> f64 {
-        self.tooth_thickness()
-    }
-    fn diametral_pitch(&self) -> f64 {
-        self.diametral_pitch()
     }
 
     fn thinned_tooth_thickness(&self, backlash_mm: f64) -> Option<f64> {
@@ -953,7 +917,7 @@ impl HelicalGearBuilder {
             helix_hand,
             normal_pressure_angle: self
                 .normal_pressure_angle
-                .unwrap_or(DEFAULT_NORMAL_PRESSURE_ANGLE),
+                .unwrap_or(crate::constants::ISO_PRESSURE_ANGLE_DEG),
             face_width: self.face_width,
         })
     }

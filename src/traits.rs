@@ -50,12 +50,24 @@
 //! - **Pressure angle** — the names differ (`pressure_angle` on `Gear`;
 //!   `normal_pressure_angle` on `HelicalGear`). The trait omits these because
 //!   the values are not directly comparable across gear types.
-//! - **Contact ratio** — the spur and helical methods have different signatures
-//!   (`contact_ratio_with` vs `transverse_contact_ratio_with`) and pair methods
-//!   require two gears of the *same* type, which is hard to abstract cleanly
-//!   without associated types or GATs.
+//! - **Contact ratio** — pair methods require two gears of the *same* type,
+//!   which is hard to abstract cleanly without associated types or GATs.
+//!   Use [`Gear::contact_ratio_with`] and
+//!   [`HelicalGear::transverse_contact_ratio_with`] on the concrete types.
 //! - **Helical-only quantities** — helix angle, hand, axial pitch, lead, and
 //!   overlap ratio have no spur-gear equivalent.
+//!
+//! # Required vs default methods
+//!
+//! The trait requires six methods that differ by gear type: `teeth`,
+//! `normal_module`, `reference_diameter`, `tip_diameter`, `root_diameter`,
+//! `base_diameter`, `thinned_tooth_thickness`, and `normal_backlash`. All other
+//! methods (`addendum`, `dedendum`, `tooth_depth`, `clearance`,
+//! `tooth_thickness`, `diametral_pitch`) are provided as defaults computed from
+//! `normal_module()` and need not be overridden in new implementations.
+//!
+//! [`Gear::contact_ratio_with`]: crate::gear::Gear::contact_ratio_with
+//! [`HelicalGear::transverse_contact_ratio_with`]: crate::helical::HelicalGear::transverse_contact_ratio_with
 //!
 //! # Default pair methods
 //!

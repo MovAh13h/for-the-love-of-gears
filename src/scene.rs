@@ -168,7 +168,26 @@ pub enum AnyGear {
 }
 
 impl AnyGear {
-    fn can_mesh_with(&self, other: &AnyGear) -> bool {
+    /// Returns `true` if this gear can physically mesh with `other`.
+    ///
+    /// Spur gears and helical gears cannot mesh with each other. Two spur gears
+    /// must share the same module and pressure angle. Two helical gears must also
+    /// share the same helix angle magnitude and have opposite hands.
+    ///
+    /// ```
+    /// use for_the_love_of_gears::{gear::Gear, helical::{HelicalGear, HelixHand}, scene::AnyGear};
+    ///
+    /// let s1 = AnyGear::from(Gear::builder().module(2.0).teeth(20).build().unwrap());
+    /// let s2 = AnyGear::from(Gear::builder().module(2.0).teeth(40).build().unwrap());
+    /// assert!(s1.can_mesh_with(&s2));
+    ///
+    /// let h = AnyGear::from(
+    ///     HelicalGear::builder().module(2.0).teeth(20)
+    ///         .helix_angle(20.0).helix_hand(HelixHand::Right).build().unwrap()
+    /// );
+    /// assert!(!s1.can_mesh_with(&h)); // spur vs helical
+    /// ```
+    pub fn can_mesh_with(&self, other: &AnyGear) -> bool {
         match (self, other) {
             (Self::Spur(a), Self::Spur(b)) => a.can_mesh_with(b),
             (Self::Helical(a), Self::Helical(b)) => a.can_mesh_with(b),
@@ -467,11 +486,6 @@ impl fmt::Display for GearSceneError {
     }
 }
 
-#[derive(Debug)]
-struct ShaftData {
-    gears: Vec<(String, AnyGear)>,
-}
-
 /// A validated gear scene: shafts with mounted gears and mesh connections between them.
 ///
 /// Build with [`GearScene::builder()`] and simulate with [`GearScene::run()`].
@@ -544,12 +558,9 @@ impl GearScene {
             })
             .collect();
 
-        let mut shaft_order: Vec<String> = states.keys().cloned().collect();
-        shaft_order.sort();
-
         Ok(GearSimulation {
             states,
-            shaft_order,
+            shaft_order: self.shaft_order.clone(),
             driver_shaft: self.driver_shaft.clone(),
             driver_rpm,
         })
@@ -581,7 +592,7 @@ impl GearScene {
 
     /// Index of `shaft` in the sorted shaft order used by [`SimFrame::shaft_angles`].
     ///
-    /// The sorted order is the same as [`shaft_names`]. Look up the index once
+    /// The sorted order is the same as [`GearScene::shaft_names`]. Look up the index once
     /// before calling [`GearScene::run`], then reuse it across all frames:
     ///
     /// ```
@@ -719,7 +730,7 @@ impl GearSceneBuilder {
         }
 
         // --- Build maps ---
-        let mut shafts: HashMap<String, ShaftData> = HashMap::new();
+        let mut shafts: HashMap<String, Vec<(String, AnyGear)>> = HashMap::new();
         let mut gear_to_shaft: HashMap<String, String> = HashMap::new();
         let mut gear_map: HashMap<String, (String, usize)> = HashMap::new();
 
@@ -731,7 +742,7 @@ impl GearSceneBuilder {
                 gear_to_shaft.insert(gear_name.clone(), shaft_name.clone());
                 gear_map.insert(gear_name.clone(), (shaft_name.clone(), idx));
             }
-            shafts.insert(shaft_name, ShaftData { gears });
+            shafts.insert(shaft_name, gears);
         }
 
         // --- Validate driver shaft exists ---
@@ -777,18 +788,10 @@ impl GearSceneBuilder {
                 });
             }
 
-            let g_a = shafts[&shaft_a]
-                .gears
-                .iter()
-                .find(|(n, _)| n == gear_a)
-                .map(|(_, g)| g)
-                .unwrap();
-            let g_b = shafts[&shaft_b]
-                .gears
-                .iter()
-                .find(|(n, _)| n == gear_b)
-                .map(|(_, g)| g)
-                .unwrap();
+            let (_, idx_a) = &gear_map[gear_a.as_str()];
+            let g_a = &shafts[&shaft_a][*idx_a].1;
+            let (_, idx_b) = &gear_map[gear_b.as_str()];
+            let g_b = &shafts[&shaft_b][*idx_b].1;
 
             if !g_a.can_mesh_with(g_b) {
                 let err = if matches!(
@@ -873,18 +876,13 @@ impl GearSceneBuilder {
             }
         }
 
-        let shafts_data: HashMap<String, Vec<(String, AnyGear)>> = shafts
-            .into_iter()
-            .map(|(name, sd)| (name, sd.gears))
-            .collect();
-
         let mut shaft_order: Vec<String> = states.keys().cloned().collect();
         shaft_order.sort();
 
         Ok(GearScene {
             driver_shaft,
             states,
-            shafts: shafts_data,
+            shafts,
             meshes: self.meshes,
             shaft_order,
             gear_map,
