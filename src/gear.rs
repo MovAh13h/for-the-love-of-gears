@@ -596,7 +596,11 @@ impl fmt::Display for Gear {
     /// assert_eq!(g2.to_string(), "Gear { m=2.5, z=17, α=14.5° }");
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Gear {{ m={}, z={}, α={}° }}", self.module, self.teeth, self.pressure_angle)
+        write!(
+            f,
+            "Gear {{ m={}, z={}, α={}° }}",
+            self.module, self.teeth, self.pressure_angle
+        )
     }
 }
 

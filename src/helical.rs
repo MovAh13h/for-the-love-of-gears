@@ -131,7 +131,7 @@ impl fmt::Display for HelixHand {
     /// ```
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Left  => write!(f, "left-hand"),
+            Self::Left => write!(f, "left-hand"),
             Self::Right => write!(f, "right-hand"),
         }
     }

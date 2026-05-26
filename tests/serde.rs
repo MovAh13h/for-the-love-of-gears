@@ -1,13 +1,15 @@
 #![cfg(feature = "serde")]
 
 use for_the_love_of_gears::{
+    GearError,
     gear::Gear,
     helical::{HelicalGear, HelixHand},
     scene::{AnyGear, Direction},
-    GearError,
 };
 
-fn roundtrip<T: serde::Serialize + for<'de> serde::Deserialize<'de> + std::fmt::Debug + PartialEq>(
+fn roundtrip<
+    T: serde::Serialize + for<'de> serde::Deserialize<'de> + std::fmt::Debug + PartialEq,
+>(
     value: &T,
 ) {
     let json = serde_json::to_string(value).expect("serialize");
